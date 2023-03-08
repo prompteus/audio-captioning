@@ -8,7 +8,7 @@ def exp_warmup_linear_down(warmup, rampdown_length, start_rampdown, last_value):
     1. Warmup Phase: lr exponentially increases for 'warmup' number of epochs (to a factor of 1.0)
     2. Constant LR Phase: lr reaches max value (factor of 1.0)
     3. Linear Decrease Phase: lr decreases linearly starting from epoch 'start_rampdown'
-    4. Fintuning Phase: phase 3 completes after 'rampdown_length' epoch, followed by a finetuning phase using
+    4. Finetuning Phase: phase 3 completes after 'rampdown_length' epochs, followed by a finetuning phase using
                         a learning rate of max lr * 'last_value'
     """
     rampup = exp_rampup(warmup)

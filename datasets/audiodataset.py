@@ -24,17 +24,17 @@ class BasicAudioDataset(Dataset):
     def __init__(self, meta_csv: str, sr: int = 32000, cache_path: str = None):
         """
         @param meta_csv: meta csv file for the dataset
-        @param sr: specifies sampling rate
-        @param cache_path: specifies cache path to store resampled waveforms
+        @param sr: sampling rate
+        @param cache_path: cache path to store resampled waveforms
         return: waveform, label
         """
         df = pd.read_csv(meta_csv, sep="\t")
-        le = preprocessing.LabelEncoder()  # sklearn label encoder to transforms strings into numbers
+        le = preprocessing.LabelEncoder()  # sklearn label encoder to transform strings into numbers
         self.labels = torch.from_numpy(le.fit_transform(df[['scene_label']].values.reshape(-1)))
         self.files = df[['filename']].values.reshape(-1)
         self.sr = sr
         # why do we want to cache the audio clips?
-        # resampling is time consuming -> we only do it once and save the resampled signal as a pytorch tensor
+        # resampling is time-consuming -> we only do it once and save the resampled signals as a pytorch tensors
         if cache_path is not None:
             self.cache_path = os.path.join(cache_path, dataset_config["dataset_name"] + f"_r{self.sr}", "files_cache")
             os.makedirs(self.cache_path, exist_ok=True)

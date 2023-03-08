@@ -43,7 +43,7 @@ class BasicBlock(nn.Module):
                     in_channels,
                     out_channels,
                     kernel_size=(1, 1),
-                    stride=stride,  # downsample
+                    stride=stride,
                     padding=0,
                     bias=False))
             self.shortcut.add_module('bn', nn.BatchNorm2d(out_channels))
@@ -137,7 +137,6 @@ class Network(nn.Module):
 
 def get_model(in_channels=1, n_classes=10, base_channels=32, channels_multiplier=2):
     """
-
     :param in_channels: 1 for spectrograms, 3 for RBG images
     :param n_classes: number of logits
     :param base_channels: scales width (number of channels) of layers

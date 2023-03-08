@@ -61,7 +61,7 @@ class AugmentMelSTFT(nn.Module):
         # Short-Time Fourier Transform using Hanning window
         x = torch.stft(x, self.n_fft, hop_length=self.hopsize, win_length=self.win_length,
                        center=True, normalized=False, window=self.window, return_complex=False)
-        # shape: batch size x freqs (n_fft/2) x timeframes (samples/hop_length) x 2 (real and imaginary components)
+        # shape: batch size x freqs (n_fft/2 + 1) x timeframes (samples/hop_length) x 2 (real and imaginary components)
         # shape: 12 x 513 x 100 x 2
 
         # calculate power spectrum

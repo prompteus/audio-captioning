@@ -20,10 +20,11 @@ class SimpleDCASELitModule(pl.LightningModule):
     It has several convenient abstractions, e.g. we don't have to specify all parts of the
     training loop (optimizer.step(), loss.backward()) ourselves.
     """
+
     def __init__(self, config):
         super().__init__()
         self.config = config  # results from argparse and contains all configurations for our experiment
-        # model to preprocess waveform into log mel spectrograms
+        # model to preprocess waveforms into log mel spectrograms
         self.mel = AugmentMelSTFT(n_mels=config.n_mels,
                                   sr=config.resample_rate,
                                   win_length=config.window_size,
@@ -50,7 +51,7 @@ class SimpleDCASELitModule(pl.LightningModule):
         return: a batch of log mel spectrograms
         """
         old_shape = x.size()
-        x = x.reshape(-1, old_shape[2])  # for calculating mel spectrograms we remove channel dimension
+        x = x.reshape(-1, old_shape[2])  # for calculating mel spectrograms we remove the channel dimension
         x = self.mel(x)
         x = x.reshape(old_shape[0], old_shape[1], x.shape[1], x.shape[2])  # batch x channels x mels x time-frames
         return x
@@ -66,7 +67,7 @@ class SimpleDCASELitModule(pl.LightningModule):
 
     def configure_optimizers(self):
         """
-        This is the way pytorch lightening requires optimizers and learning rate schedules to be defined.
+        This is the way pytorch lightening requires optimizers and learning rate schedulers to be defined.
         The specified items are used automatically in the optimization loop (no need to call optimizer.step() yourself).
         :return: dict containing optimizer and learning rate scheduler
         """
@@ -96,20 +97,22 @@ class SimpleDCASELitModule(pl.LightningModule):
             rn_indices, lam = mixup(bs, args.mixup_alpha)  # get shuffled indices and mixing coefficients
             # send mixing coefficients to correct device and make them 4-dimensional
             lam = lam.to(x.device).reshape(bs, 1, 1, 1)
+            # mix two spectrograms from the batch
             x = x * lam + x[rn_indices] * (1. - lam)
             # generate predictions for mixed log mel spectrograms
             y_hat = self.model(x)
             # mix the prediction targets using the same mixing coefficients
-            samples_loss = (F.cross_entropy(y_hat, y, reduction="none") * lam.reshape(bs) +
-                            F.cross_entropy(y_hat, y[rn_indices], reduction="none") * (
-                                    1. - lam.reshape(bs)))
+            samples_loss = (
+                    F.cross_entropy(y_hat, y, reduction="none") * lam.reshape(bs) +
+                    F.cross_entropy(y_hat, y[rn_indices], reduction="none") * (1. - lam.reshape(bs))
+            )
 
         else:
             y_hat = self.model(x)
             # cross_entropy is used for multiclass problems
-            # be careful choosing the correct loss functions
+            # be careful when choosing the correct loss functions
             # read the documentation what input your loss function expects, e.g. for F.cross_entropy:
-            # the logits (no softmax!) and the predictions targets (class indices)
+            # the logits (no softmax!) and the prediction targets (class indices)
             samples_loss = F.cross_entropy(y_hat, y, reduction="none")
 
         loss = samples_loss.mean()
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     # phases:
     #  1. exponentially increasing warmup phase (for 'warm_up_len' epochs)
     #  2. constant lr phase using value specified in 'lr' (for 'ramp_down_start' - 'warm_up_len' epochs)
-    #  3. linear decrease to value 'las_lr_value' * 'lr' (for 'ramp_down_len' epochs)
+    #  3. linearly decreasing to value 'las_lr_value' * 'lr' (for 'ramp_down_len' epochs)
     #  4. finetuning phase using a learning rate of 'last_lr_value' * 'lr' (for the rest of epochs up to 'n_epochs')
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--warm_up_len', type=int, default=6)
