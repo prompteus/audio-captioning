@@ -30,7 +30,7 @@ class BasicAudioDataset(Dataset):
         """
         df = pd.read_csv(meta_csv, sep="\t")
         le = preprocessing.LabelEncoder()  # sklearn label encoder to transform strings into numbers
-        self.labels = torch.from_numpy(le.fit_transform(df[['scene_label']].values.reshape(-1)))
+        self.labels = torch.from_numpy(le.fit_transform(df[['scene_label']].values.reshape(-1))).long()
         self.files = df[['filename']].values.reshape(-1)
         self.sr = sr
         # why do we want to cache the audio clips?
