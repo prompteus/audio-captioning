@@ -169,14 +169,11 @@ def train(config):
     pl_module = SimpleDCASELitModule(config)
     # create monitor to keep track of learning rate - we want to check the behaviour of our learning rate schedule
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
-    # check if at least one gpu is available
-    gpu_available = torch.cuda.is_available()
     # create the pytorch lightening trainer by specifying the number of epochs to train, the logger,
     # on which kind of device(s) to train and possible callbacks
     trainer = pl.Trainer(max_epochs=config.n_epochs,
                          logger=wandb_logger,
-                         accelerator='gpu' if gpu_available else 'cpu',
-                         devices=1 if gpu_available else 0,
+                         accelerator='auto',
                          callbacks=[lr_monitor])
     # start training and validation
     trainer.fit(pl_module, train_dataloaders=train_dl, val_dataloaders=val_dl)
