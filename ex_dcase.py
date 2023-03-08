@@ -173,7 +173,7 @@ def train(config):
     # on which kind of device(s) to train and possible callbacks
     trainer = pl.Trainer(max_epochs=config.n_epochs,
                          logger=wandb_logger,
-                         accelerator='cpu',
+                         accelerator='auto',
                          callbacks=[lr_monitor])
     # start training and validation
     trainer.fit(pl_module, train_dataloaders=train_dl, val_dataloaders=val_dl)
