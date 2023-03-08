@@ -25,16 +25,16 @@ class BasicAudioDataset(Dataset):
         """
         @param meta_csv: meta csv file for the dataset
         @param sr: specifies sampling rate
-        @param sr: specifies cache path to store resampled waveforms
+        @param cache_path: specifies cache path to store resampled waveforms
         return: waveform, label
         """
         df = pd.read_csv(meta_csv, sep="\t")
-        le = preprocessing.LabelEncoder()
+        le = preprocessing.LabelEncoder()  # sklearn label encoder to transforms strings into numbers
         self.labels = torch.from_numpy(le.fit_transform(df[['scene_label']].values.reshape(-1)))
         self.files = df[['filename']].values.reshape(-1)
         self.sr = sr
         # why do we want to cache the audio clips?
-        # resampling is time consuming -> we only do it once and save the resampled signal as pytorch tensor
+        # resampling is time consuming -> we only do it once and save the resampled signal as a pytorch tensor
         if cache_path is not None:
             self.cache_path = os.path.join(cache_path, dataset_config["dataset_name"] + f"_r{self.sr}", "files_cache")
             os.makedirs(self.cache_path, exist_ok=True)
@@ -52,6 +52,7 @@ class BasicAudioDataset(Dataset):
                 sig = torch.from_numpy(sig[np.newaxis])
                 torch.save(sig, cpath)
         else:
+            # no caching used
             sig, _ = librosa.load(os.path.join(dataset_dir, self.files[index]), sr=self.sr, mono=True)
             sig = torch.from_numpy(sig[np.newaxis])
         return sig, self.labels[index]
@@ -61,7 +62,7 @@ class BasicAudioDataset(Dataset):
 
 
 class SimpleSelectionDataset(Dataset):
-    """A dataset that selects a subsample from a dataset based on a set of sample ids.
+    """A dataset that selects a subset from a dataset based on a set of sample ids.
         Supporting integer indexing in range from 0 to len(self) exclusive.
     """
 
@@ -102,7 +103,7 @@ class PreprocessDataset(Dataset):
 
 
 def get_roll_func(axis=1, shift_range=10000):
-    # roll waveform
+    # roll waveform over time
     def roll_func(batch):
         x = batch[0]  # the waveform
         others = batch[1:]  # label + possible other metadata in batch
@@ -114,33 +115,29 @@ def get_roll_func(axis=1, shift_range=10000):
 
 # commands to create the datasets for training and testing
 def get_training_set(cache_path="datasets/example_data/cached", resample_rate=32000, roll=False):
+    # get filenames of clips in training set
     train_files = pd.read_csv(dataset_config['train_files_csv'], sep='\t')['filename'].values.reshape(-1)
     meta = pd.read_csv(dataset_config['meta_csv'], sep="\t")
+    # get indices of training clips
     train_indices = list(meta[meta['filename'].isin(train_files)].index)
+    # first create dataset and then use 'SimpleSelectionDataset' to select train partition
     ds = SimpleSelectionDataset(
         BasicAudioDataset(dataset_config['meta_csv'], sr=resample_rate, cache_path=cache_path),
         train_indices)
-    # you can add further data augmentations applied to raw waveforms here
+    # use the PreprocessDataset to add data augmentations applied to raw waveforms here
     if roll:
         ds = PreprocessDataset(ds, get_roll_func())
     return ds
 
 
-def get_test_set(cache_path="example_data/cached", resample_rate=32000):
+def get_val_set(cache_path="example_data/cached", resample_rate=32000):
+    # get filenames of clips in validation set
     test_files = pd.read_csv(dataset_config['test_files_csv'], sep='\t')['filename'].values.reshape(-1)
     meta = pd.read_csv(dataset_config['meta_csv'], sep="\t")
+    # get indices of validation clips
     test_indices = list(meta[meta['filename'].isin(test_files)].index)
+    # first create dataset and then use 'SimpleSelectionDataset' to select validation partition
     ds = SimpleSelectionDataset(
         BasicAudioDataset(dataset_config['meta_csv'], sr=resample_rate, cache_path=cache_path),
         test_indices)
     return ds
-
-
-if __name__ == "__main__":
-    ds = get_training_set(roll=True)
-    for i in range(len(ds)):
-        print(ds[i])
-
-    ds = get_test_set()
-    for i in range(len(ds)):
-        print(ds[i])

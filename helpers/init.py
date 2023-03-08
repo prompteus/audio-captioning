@@ -4,6 +4,10 @@ import random
 
 
 def worker_init_fn(wid):
+    """
+    Don't get confused here. This function is passed to Pytorch dataloader and makes sure
+    that python random, numpy and torch are seeded appropriately.
+    """
     seed_sequence = np.random.SeedSequence(
         [torch.initial_seed(), wid]
     )
