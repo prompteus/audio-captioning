@@ -1,0 +1,10 @@
+[project]
+name = "audiocap"
+description = "Audio captioning"
+version = "0.0.1"
+authors = [
+    { name = "", email = "lorem@ipsum.com" }
+]
+
+[tool.setuptools]
+packages = ["audiocap"]
