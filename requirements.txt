@@ -12,3 +12,6 @@ pandas==1.5.2
 notebook==6.5.3
 matplotlib==3.7.1
 pytorch-lightning==1.9.4
+transformers==4.27.1 
+datasets==2.10.1 
+evaluate==0.4.0 
