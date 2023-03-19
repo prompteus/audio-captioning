@@ -6,12 +6,12 @@ from torch.utils.data import DataLoader
 import argparse
 import torch.nn.functional as F
 
-from datasets.audiodataset import get_val_set, get_training_set
-from models.cnn import get_model
-from models.mel import AugmentMelSTFT
-from helpers.init import worker_init_fn
-from helpers.mixup import mixup
-from helpers.lr_schedule import exp_warmup_linear_down
+from .datasets.audiodataset import get_val_set, get_training_set
+from .models.cnn import get_model
+from .models.mel import AugmentMelSTFT
+from .helpers.init import worker_init_fn
+from .helpers.mixup import mixup
+from .helpers.lr_schedule import exp_warmup_linear_down
 
 
 class SimpleDCASELitModule(pl.LightningModule):
