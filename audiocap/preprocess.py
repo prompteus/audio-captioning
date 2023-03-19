@@ -75,3 +75,33 @@ class Preprocess:
         batch["labels"] = self.tokenizer("", text_target=batch["caption"].tolist()).labels
 
         return batch.to_dict(orient="list")
+
+
+class DataCollatorAudioSeq2SeqWithPadding:
+
+    def __init__(
+        self,
+        tokenizer: transformers.WhisperTokenizer,
+        feature_extractor: transformers.WhisperFeatureExtractor,
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.feature_extractor = feature_extractor
+
+    # TODO maybe TypedDict hints
+    def __call__(
+        self,
+        orig_batch: list[dict],
+    ) -> dict:
+        batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
+        batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
+
+        batch = self.feature_extractor.pad(batch_features, return_tensors="pt")
+        batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
+        # replace padding with -100 to ignore loss correctly
+        labels = batch_labels["input_ids"].masked_fill(batch_labels.attention_mask != 1, -100)
+
+        if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
+            labels = labels[:, 1:]
+
+        batch["labels"] = labels
+        return batch
