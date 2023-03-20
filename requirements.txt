@@ -16,6 +16,8 @@ pytorch-lightning==1.9.4
 transformers==4.27.1 
 datasets==2.10.1 
 evaluate==0.4.0 
+sacrebleu==2.3.1 
+rouge-score==0.1.2 
 typer==0.7.0
 rich==13.3.2 
 lovely-tensors==0.1.14
