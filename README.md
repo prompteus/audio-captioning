@@ -54,3 +54,5 @@ This will prepare the folder into the format that is easily loadable by Huggingf
 ## Training
 
 To try out the training notebook, go to `notebooks/train_whisper_supervised.ipynb`
+
+During training, the loss, metrics and example predictions are logged to `wandb`.
