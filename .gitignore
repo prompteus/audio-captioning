@@ -1,4 +1,4 @@
-/data/
+/data
 /checkpoints/
 **/*.egg-info/
 **/__pycache__/
@@ -6,3 +6,4 @@
 /wandb/
 /notebooks/wandb/
 /notebooks/checkpoints/
+/venv
