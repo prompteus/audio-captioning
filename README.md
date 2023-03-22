@@ -10,7 +10,11 @@ cd audio-captioning
 conda create -n malach23 python=3.8
 conda activate malach23
 pip install -r requirements.txt
+pip install -e .
 ```
+If the last line does not work, update your pip. e.g. `pip install --upgrade pip`
+
+
 
 ## Getting the dataset
 
