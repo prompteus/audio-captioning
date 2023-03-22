@@ -6,4 +6,5 @@
 /wandb/
 /notebooks/wandb/
 /notebooks/checkpoints/
+/checkpoints
 /venv
