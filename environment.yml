@@ -1,0 +1,9 @@
+name: audioCaps
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - ffprobe
+  - ffmpeg=4.2.2=h20bf706_0
+
+  # update pls (conda env: audioCaps)

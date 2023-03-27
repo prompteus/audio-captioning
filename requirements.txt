@@ -22,3 +22,4 @@ typer==0.7.0
 rich==13.3.2 
 lovely-tensors==0.1.14
 PyYAML==6.0
+yt-dlp==2023.3.4

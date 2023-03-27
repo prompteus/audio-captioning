@@ -1,0 +1,12 @@
+Thu, 23 Mar 2023 23:23:06 3259619918.py[line:9] INFO Download log is saved to _logs/download_dataset_minidata/train
+Thu, 23 Mar 2023 23:25:15 diff.py[line:282] DEBUG diff parser start
+Thu, 23 Mar 2023 23:25:15 diff.py[line:293] DEBUG line_lengths old: 19; new: 2
+Thu, 23 Mar 2023 23:25:15 diff.py[line:296] DEBUG -> code[replace] old[1:19] new[1:2]
+Thu, 23 Mar 2023 23:25:15 diff.py[line:421] DEBUG parse_part from 1 to 2 (to 1 in part parser)
+Thu, 23 Mar 2023 23:25:15 diff.py[line:339] DEBUG diff parser end
+Thu, 23 Mar 2023 23:25:43 diff.py[line:282] DEBUG diff parser start
+Thu, 23 Mar 2023 23:25:43 diff.py[line:293] DEBUG line_lengths old: 2; new: 2
+Thu, 23 Mar 2023 23:25:43 diff.py[line:296] DEBUG -> code[equal] old[1:1] new[1:1]
+Thu, 23 Mar 2023 23:25:43 diff.py[line:421] DEBUG parse_part from 1 to 2 (to 1 in part parser)
+Thu, 23 Mar 2023 23:25:43 diff.py[line:296] DEBUG -> code[replace] old[2:2] new[2:2]
+Thu, 23 Mar 2023 23:25:43 diff.py[line:339] DEBUG diff parser end
