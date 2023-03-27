@@ -1,4 +1,4 @@
-/data
+/data/**
 /checkpoints/
 **/*.egg-info/
 **/__pycache__/
