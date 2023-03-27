@@ -1,4 +1,4 @@
-/data/**
+data/**
 /checkpoints/
 **/*.egg-info/
 **/__pycache__/
@@ -8,7 +8,7 @@
 /notebooks/checkpoints/
 /checkpoints
 /venv
-!/data/audioCaps/csvs/debug.csv
-!/data/audioCaps/csvs/train.csv
-!/data/audioCaps/csvs/test.csv
-!/data/audioCaps/csvs/valid.csv
+!data/audioCaps/csvs/debug.csv
+!data/audioCaps/csvs/train.csv
+!data/audioCaps/csvs/test.csv
+!data/audioCaps/csvs/valid.csv
