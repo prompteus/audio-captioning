@@ -7,10 +7,10 @@ import datasets
 import json
 from pathlib import Path
 
-from .coco_caption.pycocotools.coco import COCO
-from .coco_caption.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-from .coco_caption.pycocoevalcap.cider.cider import Cider
-from .coco_caption.pycocoevalcap.spice.spice import Spice
+from .evaluation_tools.coco_caption.pycocotools.coco import COCO
+from .evaluation_tools.coco_caption.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+from .evaluation_tools.coco_caption.pycocoevalcap.cider.cider import Cider
+from .evaluation_tools.coco_caption.pycocoevalcap.spice.spice import Spice
 
 def write_json(data: Union[List[Dict[str, Any]], Dict[str, Any]],
                path: Path) \
