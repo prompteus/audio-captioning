@@ -90,6 +90,7 @@ class SpiceMetric(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
             description="SPICE Metric",
+            citation="https://arxiv.org/abs/1607.08822",
             features=datasets.Features(
                 {
                     "predictions": datasets.Value("string", id="sequence"),
@@ -117,6 +118,7 @@ class CiderMetric(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
             description="CIDEr Metric",
+            citation="http://arxiv.org/abs/1411.5726",
             features=datasets.Features(
                 {
                     "predictions": datasets.Value("string", id="sequence"),
