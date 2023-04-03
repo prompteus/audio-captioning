@@ -57,9 +57,15 @@ This will prepare the folder into the format that is easily loadable by Huggingf
 
 ## Getting Audioset dataset
 
+Make the script executable
+
 ```shell
 chmod +x ./scripts/download_audioset.sh
+```
 
+Download the audio files
+
+```shell
 SPLIT='train_unbalanced' # or 'train_balanced' or 'eval'
 
 mkdir -p logs/download_audioset
