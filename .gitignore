@@ -1,5 +1,6 @@
 data/clotho_v2.1
 data/audioCaps/audios
+data/audioset/audios
 /checkpoints/
 **/*.egg-info/
 **/__pycache__/
@@ -9,3 +10,4 @@ data/audioCaps/audios
 /notebooks/checkpoints/
 /checkpoints
 /venv
+logs/
