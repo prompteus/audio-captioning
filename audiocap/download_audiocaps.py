@@ -76,7 +76,7 @@ def download(df: pd.DataFrame,
 
         # Download full video of whatever format
         audio_name = os.path.join(audios_dir, f'{audio_id}_{youtube_id}')
-        success = os.system(f"yt-dlp -x --quiet --audio-format wav --external-downloader aria2c --external-downloader-args 'ffmpeg_i:-ss {start_time} -to {end_time}' -o '{audio_name}.%(ext)s' https://www.youtube.com/watch?v={youtube_id}")
+        success = os.system(f"yt-dlp -S "asr:32000" -x --quiet --audio-format mp3 --external-downloader aria2c --external-downloader-args 'ffmpeg_i:-ss {start_time} -to {end_time}' -o '{audio_name}.%(ext)s' https://www.youtube.com/watch?v={youtube_id}")
 
         if lock: # logging, if multiprocessing, use lock
             with lock:
