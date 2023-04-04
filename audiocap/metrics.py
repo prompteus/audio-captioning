@@ -225,6 +225,7 @@ class CaptioningMetrics:
         tokens = tokenizer.tokenize()
         spice_score = self.spice.compute(predictions=preds_str, references=trues_str, tokens=tokens)
         cider_score = self.cider.compute(predictions=preds_str, references=trues_str, tokens=tokens)
+        spider_score = 0.5 * (spice_score['average_score'] + cider_score['score'])
 
         pred_num_tokens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
 
@@ -234,6 +235,7 @@ class CaptioningMetrics:
             "meteor": meteor_score['meteor'],
             "spice": spice_score['average_score'],
             "cider": cider_score['score'],
+            "spider": spider_score,
             "num_tokens": float(np.mean(pred_num_tokens)),
         }
 
