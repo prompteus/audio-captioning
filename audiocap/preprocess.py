@@ -105,3 +105,54 @@ class DataCollatorAudioSeq2SeqWithPadding:
 
         batch["labels"] = labels
         return batch
+
+
+class AudiosetOntology:
+    def __init__(self, df: pd.DataFrame):
+        assert set(df.columns) == {'name', 'description', 'citation_uri', 'positive_examples', 'child_ids', 'restrictions'}
+        self.df = df
+
+        children = df["child_ids"].explode().dropna().rename("child_id")
+        parents = pd.DataFrame({"child_id": children.values, "parent_id": children.index})
+        
+        self.parents: dict[str, list[str]]
+        self.parents = parents.groupby("child_id")["parent_id"].apply(list).rename("parent_ids").to_dict()
+        for label_id in self.df.index:
+            self.parents[label_id] = self.parents.get(label_id, [])
+
+    @staticmethod
+    def from_json_file(file_path) -> AudiosetOntology:
+        ontology = pd.read_json(file_path).set_index('id', drop=True)
+        return AudiosetOntology(ontology)    
+    
+    def audioset_label_ids_to_str(
+        self,
+        label_ids: str | list[str],
+        include_parents: bool = True,
+    ) -> str:
+        """
+        Converts a list of Audioset label ids to string
+        Does not support batched inputs.
+
+        # TODO add prefix?
+        """
+
+        if isinstance(label_ids, str):
+            label_ids = label_ids.split(",")
+
+        label_ids = [label.strip().strip('"') for label in label_ids]
+        names = []
+
+        for label_id in label_ids:
+            if include_parents:
+                parent_ids = self.parents[label_id]
+                for parent_id in parent_ids:
+                    name = self.df.loc[parent_id]["name"]
+                    if name not in names:
+                        names.append(name)
+
+            name = self.df.loc[label_id]["name"]
+            if name not in names:
+                names.append(name)
+
+        return ", ".join([name.replace(",", " -").replace(":", " -").lower() for name in names])
