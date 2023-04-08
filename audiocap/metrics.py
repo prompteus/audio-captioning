@@ -1,11 +1,13 @@
 from __future__ import annotations
+from typing import Dict, Any, Union, List
+from pathlib import Path
+import json
 
 import evaluate
 import numpy as np
+import pandas as pd
 import transformers
 import datasets
-import json
-from pathlib import Path
 
 from .evaluation_tools.coco_caption.pycocotools.coco import COCO
 from .evaluation_tools.coco_caption.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
@@ -190,6 +192,69 @@ class CocoTokenizer:
     def setEvalAudios(self):
         self.evalAudios = [eval for audioId, eval in self.audioToEval.items()]
 
+
+def keyword_metrics_single(*, y_pred: str, y_true: str):
+    y_pred = set(label.strip().strip('"').strip('') for label in y_pred.split(",")) - {""}
+    y_true = set(label.strip().strip('"').strip('') for label in y_true.split(",")) - {""}
+    
+    intersection = y_true & y_pred
+    union = y_true | y_pred 
+    
+    if len(y_pred) == 0:
+        precision = 0.0
+    else:
+        precision = len(intersection) / len(y_pred)
+
+    if len(y_true) == 0:
+        recall = 0.0
+    else:
+        recall = len(intersection) / len(y_true)
+
+    if len(union) == 0:
+        jaccard = 0.0
+    else:
+        jaccard = len(intersection) / len(union)
+    
+    try:
+        f1 = 2 * (precision * recall) / (precision + recall)
+    except ZeroDivisionError:
+        f1 = 0.0
+
+    return {
+        "keywords_num_generated": len(y_pred),
+        "keywords_num_true": len(y_true),
+        "keywords_precision": precision,
+        "keywords_recall": recall,
+        "keywords_f1": f1,
+        "keywords_jaccard": jaccard,
+    }
+
+def keyword_metrics_batch(*, y_pred: list[str], y_true: list[str]):
+    """
+    >>> keyword_metrics_batch(
+    ...     y_pred = ["hello, darkness, my old friend", "a, b, c, d, e"],
+    ...     y_true = ["hello, world,", "a, b, c, d"],
+    ... )
+    {'keywords_num_generated': 4.0,
+     'keywords_num_true': 3.0,
+     'keywords_precision': 0.5666666666666667,
+     'keywords_recall': 0.75,
+     'keywords_f1': 0.6444444444444445,
+     'keywords_jaccard': 0.525}
+"""
+
+    if len(y_pred) != len(y_true):
+        raise ValueError("y_pred and y_true must have the same length")
+    
+    batch_size = len(y_pred)
+    metrics = pd.DataFrame([
+        keyword_metrics_single(y_pred=y_pred[i], y_true=y_true[i])
+        for i in range(batch_size)
+    ])
+    
+    return metrics.mean().to_dict()
+
+
 class CaptioningMetrics:
 
     def __init__(
@@ -237,6 +302,7 @@ class CaptioningMetrics:
             "cider": cider_score['score'],
             "spider": spider_score,
             "num_tokens": float(np.mean(pred_num_tokens)),
+            # TODO call keyword metrics for keyword-oriented tasks (audioset, etc.)
         }
 
         return logged_dict
