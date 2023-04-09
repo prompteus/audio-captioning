@@ -5,7 +5,7 @@
 
 Start by creating a conda environment:
 ```shell
-git clone ...
+git clone --recursive ... # recursive because there is `evaluation_tools` as git submodule
 cd audio-captioning
 conda create -n malach23 python=3.8
 conda activate malach23
