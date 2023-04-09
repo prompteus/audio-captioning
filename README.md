@@ -82,6 +82,6 @@ mkdir -p logs/download_audioset
 
 ## Training
 
-To try out the training notebook, go to `notebooks/train_whisper_supervised.ipynb`
+To try out the training notebook, go to `audiocap/train_whisper_supervised.py`
 
 During training, the loss, metrics and example predictions are logged to `wandb`.
