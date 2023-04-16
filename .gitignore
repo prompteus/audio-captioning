@@ -6,6 +6,7 @@ data/audioset/audios
 **/__pycache__/
 **/.ipynb_checkpoints/
 /wandb/
+/audiocap/wandb/
 /notebooks/wandb/
 /notebooks/checkpoints/
 /checkpoints

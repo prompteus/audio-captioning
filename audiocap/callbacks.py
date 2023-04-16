@@ -31,7 +31,6 @@ class WandbPredictionLogger(transformers.TrainerCallback):
                 "you might forgot to set `max_length` in `generate_kwargs` "
                 f"inside {self.__class__.__name__}"
             )
-        
 
     def on_step_end(
         self,
@@ -42,7 +41,7 @@ class WandbPredictionLogger(transformers.TrainerCallback):
     ) -> None:
         model: transformers.PreTrainedModel = kwargs["model"]
         tokenizer: transformers.PreTrainedTokenizer = kwargs["tokenizer"]
-
+        
         dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=args.per_device_eval_batch_size,
@@ -60,7 +59,7 @@ class WandbPredictionLogger(transformers.TrainerCallback):
                 kwargs = self.generate_kwargs.copy()
                 if "attention_mask" in batch:
                     kwargs["attention_mask"] = batch["attention_mask"].to(args.device)
-                preds = model.generate(batch["input_features"].to(args.device), **kwargs)
+                preds = model.generate(batch["input_features"].to(args.device), batch["forced_prefix_ids"], **kwargs)
                 preds_str = tokenizer.batch_decode(preds, skip_special_tokens=True)
                 all_preds.extend(preds_str)
 

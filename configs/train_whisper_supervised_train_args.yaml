@@ -15,9 +15,10 @@ eval_accumulation_steps: 8
 # Don't touch this
 logging_steps: 50
 report_to: "wandb"
+remove_unused_columns: False
 
 # TODO check if this makes training faster (or use less memory) in our setup
-fp16: True
+fp16: False
 
 metric_for_best_model: "sacrebleu" # TODO change
 greater_is_better: True # TODO change according to metric
