@@ -59,7 +59,7 @@ class WandbPredictionLogger(transformers.TrainerCallback):
                 kwargs = self.generate_kwargs.copy()
                 if "attention_mask" in batch:
                     kwargs["attention_mask"] = batch["attention_mask"].to(args.device)
-                preds = model.generate(batch["input_features"].to(args.device), batch["forced_prefix_ids"], **kwargs)
+                preds = model.generate(batch["input_features"].to(args.device), batch["forced_ac_decoder_ids"].to(args.device), **kwargs)
                 preds_str = tokenizer.batch_decode(preds, skip_special_tokens=True)
                 all_preds.extend(preds_str)
 

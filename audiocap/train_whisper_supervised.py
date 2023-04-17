@@ -262,7 +262,7 @@ def get_clotho_dataset(clotho_dir: pathlib.Path,
                      'filename',
                      'input_features',
                      'labels',
-                     'forced_prefix_ids'}
+                     'forced_ac_decoder_ids'}
     assert set(ds_mini["dev_mini"][0].keys()) == expected_keys, f"actual keys: {set(ds_mini['dev_mini'][0].keys())}\nsymetric sifference: {set(ds_mini['dev_mini'][0].keys()).symmetric_difference(expected_keys)}"
 
     return ds, ds_mini
@@ -358,7 +358,7 @@ def get_audioset_dataset(audioset_dir: pathlib.Path,
                      'filename',
                      'input_features',
                      'labels',
-                     'forced_prefix_ids'}
+                     'forced_ac_decoder_ids'}
     assert set(ds_mini["dev_mini"][0].keys()) == expected_keys, f"actual keys: {set(ds_mini['dev_mini'][0].keys())}\nsymetric sifference: {set(ds_mini['dev_mini'][0].keys()).symmetric_difference(expected_keys)}"
 
     return ds, ds_mini

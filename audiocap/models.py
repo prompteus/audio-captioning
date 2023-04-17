@@ -51,7 +51,7 @@ class WhisperForAudioCaptioning(WhisperForConditionalGeneration):
         past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
         decoder_inputs_embeds: Optional[Tuple[torch.FloatTensor]] = None,
         labels: Optional[torch.LongTensor] = None,
-        forced_prefix_ids: Optional[List[List[int]]] = None,  # only added not to throw errors when seen
+        forced_ac_decoder_ids: Optional[torch.Tensor] = None,  # only added not to throw errors when seen
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -128,7 +128,7 @@ class WhisperForAudioCaptioning(WhisperForConditionalGeneration):
     def generate(
             self,
             inputs: Optional[torch.Tensor] = None,
-            forced_prefix_ids: List[List[int]] = None,
+            forced_ac_decoder_ids: torch.Tensor = None,
             generation_config=None,
             logits_processor=None,
             stopping_criteria=None,
@@ -268,21 +268,25 @@ class WhisperForAudioCaptioning(WhisperForConditionalGeneration):
                 logits_processor = [WhisperTimeStampLogitsProcessor(generation_config)]
 
             if len(forced_decoder_ids) > 0:
-                # get the highest token position in the forced_decoder_ids
-                max_id = max([fdi[0] for fdi in forced_decoder_ids if fdi[1] is not None])
-                # append forced prefixes to each forced_decoder_ids list
-                for tok in forced_prefix_ids[0]:
-                    forced_decoder_ids.append((max_id + 1, tok))
-                    max_id += 1
+                # get the token sequence coded in forced_decoder_ids
+                forced_decoder_ids_token_ids = [tok_id for _, tok_id in sorted(forced_decoder_ids, key=lambda x: x[0])]
+
+                # enrich every sample's forced_ac_decoder_ids with Whisper's forced_decoder_ids
+                expanded_forced_decoder_ids_token_ids = torch.tensor(forced_decoder_ids_token_ids).expand((forced_ac_decoder_ids.size()[0],
+                                                                                                          len(forced_decoder_ids_token_ids)))
+                device = "cuda" if forced_ac_decoder_ids.get_device() == 0 else "cpu"
+                expanded_forced_decoder_ids_token_ids = expanded_forced_decoder_ids_token_ids.to(device)
+                decoder_input_ids = torch.cat((expanded_forced_decoder_ids_token_ids, forced_ac_decoder_ids), dim=1)
 
                 generation_config.forced_decoder_ids = forced_decoder_ids
 
-            return super(WhisperPreTrainedModel, self).generate(   # changed by adam (calling granparent)
+            return super(WhisperPreTrainedModel, self).generate(   # changed by adam (calling grandparent)
                 inputs,
                 generation_config,
                 logits_processor,
                 stopping_criteria,
                 prefix_allowed_tokens_fn,
                 synced_gpus,
+                decoder_input_ids=decoder_input_ids,
                 **kwargs,
             )

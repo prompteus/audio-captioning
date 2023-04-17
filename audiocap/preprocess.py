@@ -61,7 +61,7 @@ class Preprocess:
         assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
 
         batch["prefix"] = batch["source_ds"] + ">" + batch["task"]
-        batch["forced_prefix_ids"] = batch["prefix"].apply(self.tokenizer.encode)
+        batch["forced_ac_decoder_ids"] = batch["prefix"].apply(self.tokenizer.encode)
         batch["caption"] = batch["prefix"] + batch["caption"]
         batch["filename"] = batch["path"].apply(lambda path: pathlib.Path(path).name)
 
@@ -121,7 +121,7 @@ class DataCollatorAudioSeq2SeqWithPadding:
         
         batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
         batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
-        batch_forced_prefix_ids = [x["forced_prefix_ids"] for x in orig_batch]
+        batch_forced_ac_decoder_ids = [x["forced_ac_decoder_ids"] for x in orig_batch]
 
         batch = self.feature_extractor.pad(batch_features, return_tensors="pt")
         batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
@@ -131,6 +131,6 @@ class DataCollatorAudioSeq2SeqWithPadding:
         if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
 
-        batch["forced_prefix_ids"] = batch_forced_prefix_ids
+        batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
         batch["labels"] = labels
         return batch
