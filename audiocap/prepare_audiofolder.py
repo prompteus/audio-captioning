@@ -83,6 +83,7 @@ def prepare_audioset_small_audiofolder(
                 audioset_small_path / "audiofolder" / split / row.file_name
             )
             for row in df[["file_name", "orig_split"]].itertuples(index=False)
+            if not (audioset_small_path / "audiofolder" / split / row.file_name).exists()
         )
 
         tasks = (joblib.delayed(shutil.copy)(source_path, target_path) for source_path, target_path in tqdm(queue, total=len(df)))
