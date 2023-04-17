@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 import torchaudio
 import transformers
+import librosa
 
 
 # TODO maybe TypedDict hints
@@ -17,8 +18,20 @@ def clotho_flatten_captions(orig_batch: dict) -> dict:
         value_vars=[f"caption_{i}" for i in [1, 2, 3, 4, 5]],
         value_name="caption",
     )
+    batch_df["source_ds"] = ["clotho"] * len(batch_df)
+    batch_df["task"] = ["captions"] * len(batch_df)
     batch: dict = batch_df.to_dict(orient="list")
-    assert set(["audio", "caption_idx", "caption"]) == set(batch.keys())
+    assert set(["audio", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
+    return batch
+
+
+def audioset_set_columns(orig_batch: dict) -> dict:
+    batch_df = pd.DataFrame(dict(orig_batch))
+    batch_df["source_ds"] = ["audioset"] * len(batch_df)
+    batch_df["task"] = ["keywords"] * len(batch_df)
+    batch_df["caption_idx"] = [0] * len(batch_df)
+    batch: dict = batch_df.to_dict(orient="list")
+    assert set(["audio", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
     return batch
 
 
@@ -37,16 +50,29 @@ class Preprocess:
         audios = pd.DataFrame(orig_batch.pop("audio")).rename(columns={"array": "audio_array"})
         assert set(["path", "audio_array", "sampling_rate"]) == set(audios.keys())
 
-        rest = pd.DataFrame({k: orig_batch.pop(k) for k in list(orig_batch.keys())})
-        assert set(["caption_idx", "caption"]) == set(rest.keys())
+        # popping due huggingface column handling in map function
+        rest = pd.DataFrame({k: orig_batch.pop(k) for k in list(orig_batch.keys())}) 
+        assert set(["caption_idx", "caption", "source_ds", "task"]) == set(rest.keys())
 
         assert orig_batch == {}
 
         assert len(audios) == len(rest)
         batch = pd.concat([audios, rest], axis="columns")
-        assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption"]) == set(batch.keys())
+        assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
 
+        batch["prefix"] = batch["source_ds"] + ">" + batch["task"]
+        batch["forced_ac_decoder_ids"] = batch["prefix"].apply(self.tokenizer.encode)
+        batch["caption"] = batch["prefix"] + batch["caption"]
         batch["filename"] = batch["path"].apply(lambda path: pathlib.Path(path).name)
+
+        # check suspicious shape and convert to mono
+        test_sample = batch["audio_array"].iloc[0]
+        if len(test_sample.shape) > 1 and test_sample.shape[0] > 10:
+            print(f"WARNING: audio might have bad shape (switched channels and time), \
+                  shape: {test_sample.shape}, \
+                  filename: {batch['filename'].iloc[0]} \
+                  ds_source: {batch['source_ds'].iloc[0]}")  
+        batch["audio_array"] = batch["audio_array"].apply(librosa.to_mono)
 
         # TODO ensure MONO audio
         assert (batch["audio_array"].apply(lambda x: x.ndim) == 1).all()
@@ -92,8 +118,10 @@ class DataCollatorAudioSeq2SeqWithPadding:
         self,
         orig_batch: list[dict],
     ) -> dict:
+        
         batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
         batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
+        batch_forced_ac_decoder_ids = [x["forced_ac_decoder_ids"] for x in orig_batch]
 
         batch = self.feature_extractor.pad(batch_features, return_tensors="pt")
         batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
@@ -103,6 +131,7 @@ class DataCollatorAudioSeq2SeqWithPadding:
         if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
 
+        batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
         batch["labels"] = labels
         return batch
 
