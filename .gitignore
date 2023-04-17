@@ -1,6 +1,7 @@
 data/clotho_v2.1
 data/audioCaps/audios
-data/audioset/audios
+data/audioset_full/audios
+data/audioset_small/audiofolder/
 /checkpoints/
 **/*.egg-info/
 **/__pycache__/
