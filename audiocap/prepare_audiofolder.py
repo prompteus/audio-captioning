@@ -12,6 +12,12 @@ from tqdm.auto import tqdm
 app = typer.Typer()
 
 
+def print_suggestion(path: pathlib.Path) -> None:
+    print(f"{path} is prepared for loading with audiofolder. ")
+    print("To avoid accidental changes of the files inside the folder, run the following command:")
+    print(f"  chmod u-x '{path}'")
+
+
 @app.command()
 def prepare_clotho_audiofolder(
     clotho_path: pathlib.Path = typer.Argument(..., help="Path to the Clotho dataset")
@@ -43,9 +49,7 @@ def prepare_clotho_audiofolder(
         df = df_captions
         df.to_json(clotho_path / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print("Clotho prepared for loading with audiofolder. ")
-    print("To avoid accidental changes of the files inside the folder, run the following command:")
-    print(f"  chmod u-x '{clotho_path}'")
+    print_suggestion(clotho_path)
 
 
 @app.command()
@@ -87,14 +91,11 @@ def prepare_audioset_small_audiofolder(
 
         tasks = (joblib.delayed(shutil.copy)(source_path, target_path) for source_path, target_path in tqdm(queue, total=len(df)))
         pool(tasks)
-        
+
         df.drop(columns=["orig_split"], inplace=True)
         df.to_json(audioset_small_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-
-    print("AudioSet small prepared for loading with audiofolder. ")
-    print("To avoid accidental changes of the files inside the folder, run the following command:")
-    print(f"  chmod u-x '{audioset_small_path}/audiofolder'")
+    print_suggestion(audioset_small_path)
 
 
 @app.command()
@@ -147,7 +148,8 @@ def prepare_audiocaps_audiofolder(
         df.drop(columns=["src", "tgt"], inplace=True)
         df.to_json(audiocaps_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-
+    print_suggestion(audiocaps_path)
+    
 
 if __name__ == "__main__":
     app()
