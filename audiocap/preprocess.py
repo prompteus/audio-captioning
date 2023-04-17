@@ -10,7 +10,7 @@ import librosa
 
 
 # TODO maybe TypedDict hints
-def clotho_flatten_captions(orig_batch: dict) -> dict:
+def flatten_captions(orig_batch: dict) -> dict:
     batch_df = pd.DataFrame(dict(orig_batch))
     batch_df = batch_df.melt(
         id_vars="audio",
@@ -18,20 +18,8 @@ def clotho_flatten_captions(orig_batch: dict) -> dict:
         value_vars=[f"caption_{i}" for i in [1, 2, 3, 4, 5]],
         value_name="caption",
     )
-    batch_df["source_ds"] = ["clotho"] * len(batch_df)
-    batch_df["task"] = ["captions"] * len(batch_df)
     batch: dict = batch_df.to_dict(orient="list")
-    assert set(["audio", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
-    return batch
-
-
-def audioset_set_columns(orig_batch: dict) -> dict:
-    batch_df = pd.DataFrame(dict(orig_batch))
-    batch_df["source_ds"] = ["audioset"] * len(batch_df)
-    batch_df["task"] = ["keywords"] * len(batch_df)
-    batch_df["caption_idx"] = [0] * len(batch_df)
-    batch: dict = batch_df.to_dict(orient="list")
-    assert set(["audio", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
+    assert set(["audio", "caption_idx", "caption"]) == set(batch.keys())
     return batch
 
 
@@ -46,23 +34,23 @@ class Preprocess:
         self.feature_extractor = feature_extractor
 
     # TODO maybe TypedDict hints
-    def __call__(self, orig_batch: dict) -> dict:
+    def __call__(self, orig_batch: dict, source_ds: str, task: str) -> dict:
         audios = pd.DataFrame(orig_batch.pop("audio")).rename(columns={"array": "audio_array"})
         assert set(["path", "audio_array", "sampling_rate"]) == set(audios.keys())
 
         # popping due huggingface column handling in map function
         rest = pd.DataFrame({k: orig_batch.pop(k) for k in list(orig_batch.keys())}) 
-        assert set(["caption_idx", "caption", "source_ds", "task"]) == set(rest.keys())
+        assert set(["caption_idx", "caption"]) == set(rest.keys())
 
         assert orig_batch == {}
 
         assert len(audios) == len(rest)
         batch = pd.concat([audios, rest], axis="columns")
-        assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption", "source_ds", "task"]) == set(batch.keys())
+        assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption"]) == set(batch.keys())
 
-        batch["prefix"] = batch["source_ds"] + ">" + batch["task"]
-        batch["forced_ac_decoder_ids"] = batch["prefix"].apply(self.tokenizer.encode)
-        batch["caption"] = batch["prefix"] + batch["caption"]
+        batch["prefix"] = source_ds + " > " + task + ": "
+        batch["forced_ac_decoder_ids"] = batch["prefix"].apply(lambda x: self.tokenizer("", text_target=x, add_special_tokens=False).labels)
+        # batch["caption"] = batch["prefix"] + batch["caption"]
         batch["filename"] = batch["path"].apply(lambda path: pathlib.Path(path).name)
 
         # check suspicious shape and convert to mono
@@ -71,10 +59,9 @@ class Preprocess:
             print(f"WARNING: audio might have bad shape (switched channels and time), \
                   shape: {test_sample.shape}, \
                   filename: {batch['filename'].iloc[0]} \
-                  ds_source: {batch['source_ds'].iloc[0]}")  
+                  ds_source: {source_ds}")  
         batch["audio_array"] = batch["audio_array"].apply(librosa.to_mono)
 
-        # TODO ensure MONO audio
         assert (batch["audio_array"].apply(lambda x: x.ndim) == 1).all()
 
         def resample(row) -> torch.Tensor:
@@ -98,8 +85,10 @@ class Preprocess:
         assert features["input_features"].shape[0] == len(batch)
         assert batch["input_features"][0].shape == features["input_features"][0].shape
 
-        batch["labels"] = self.tokenizer("", text_target=batch["caption"].tolist()).labels
+        prefix_ids = self.tokenizer("", text_target="", add_special_tokens=True).labels[:-1]  # prefix fluff without eos
 
+        batch["labels"] = self.tokenizer("", text_target=batch["caption"].tolist(), add_special_tokens=False).labels
+        batch["labels"] = [prefix_ids + fdi + label + [self.tokenizer.eos_token_id] for fdi, label in zip(batch["forced_ac_decoder_ids"], batch["labels"])]
         return batch.to_dict(orient="list")
 
 
