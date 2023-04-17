@@ -95,7 +95,7 @@ def prepare_audioset_small_audiofolder(
         df.drop(columns=["orig_split"], inplace=True)
         df.to_json(audioset_small_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print_suggestion(audioset_small_path)
+    print_suggestion(audioset_small_path / "audiofolder")
 
 
 @app.command()
@@ -148,8 +148,8 @@ def prepare_audiocaps_audiofolder(
         df.drop(columns=["src", "tgt"], inplace=True)
         df.to_json(audiocaps_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print_suggestion(audiocaps_path)
-    
+    print_suggestion(audiocaps_path / "audiofolder")
+
 
 if __name__ == "__main__":
     app()
