@@ -284,12 +284,17 @@ class CaptioningMetrics:
         preds_str = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
         trues_str = self.tokenizer.batch_decode(trues, skip_special_tokens=True)
 
+        # remove our fluff
+        preds_str = ["".join(pred.split(": ")[1:]) for pred in preds_str]
+        trues_str = ["".join(true.split(": ")[1:]) for true in trues_str]
+
         # split on captions and keywords
         preds_str_captions = preds_str[:self.ds_captions_size]
         preds_str_keywords = preds_str[self.ds_captions_size:]
 
         # check if trues_str are expected labels
         # TODO bacha na nas fluff -> expected_captions jsou bez fluffu, jak jsou na tom trues_str?
+            # zkontrolovat uz jenom
         assert trues_str[:self.ds_captions_size] == self.expected_captions, f"Expected labels: predicitons are different than expected."         
 
         sacrebleu_score = self.sacrebleu.compute(predictions=preds_str_captions, references=self.expected_alternatives)
