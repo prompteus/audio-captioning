@@ -164,18 +164,32 @@ class AudiosetSubsetSelector:
         return pd.concat([contains_none, contains_one, sample])
 
 
-def balanced_split(df: pd.DataFrame, minimum_test_examples_per_class: int, seed: int):
+def balanced_split(
+    df: pd.DataFrame,
+    minimum_test_examples_per_class: int,
+    must_be_in_train: set[str],
+    must_be_in_test: set[str],
+    seed: int
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     df = df.reset_index()
     assert "labels" in df.columns
     assert "youtube_id" in df.columns
-    inverse_index = df.reset_index().explode("labels").groupby("labels").agg({"youtube_id": list})
-    test = set()
+    inverse_index = df.explode("labels").groupby("labels").agg({"youtube_id": list})
+    df = df.set_index("youtube_id")
+
+    test = must_be_in_test
     test_freqs = collections.Counter({label: 0 for label in inverse_index.index})
+    for youtube_id in test:
+        test_freqs.update(df.loc[youtube_id, "labels"])
+
     random_generator = np.random.default_rng(seed)
     for label, youtube_ids in inverse_index.itertuples(index=True):
         if len(youtube_ids) < minimum_test_examples_per_class:
             continue
+        youtube_ids = list(set(youtube_ids) - must_be_in_train)
         test.update(random_generator.choice(youtube_ids, minimum_test_examples_per_class, replace=False))
         test_freqs.update({label: minimum_test_examples_per_class})
+    df = df.reset_index()
     train = set(df["youtube_id"]) - test
     return df[df["youtube_id"].isin(train)], df[df["youtube_id"].isin(test)]
+
