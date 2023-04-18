@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Callable
+
 import datasets
 import transformers
 import wandb
@@ -11,8 +14,8 @@ class WandbPredictionLogger(transformers.TrainerCallback):
         log_prefix: str,
         log_every_n_steps: int,
         dataset: datasets.Dataset,
-        collator: transformers.DataCollator,
-        generate_kwargs: dict = None,
+        collator: Callable,
+        generate_kwargs: dict | None = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)

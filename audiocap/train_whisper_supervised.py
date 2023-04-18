@@ -100,8 +100,9 @@ def main(
 
     collator = audiocap.preprocess.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
     compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, 
-                                                         expected_caption=expected_captions,
-                                                         expected_alternatives=expected_alternatives)
+                                                         expected_captions=expected_captions,
+                                                         expected_alternatives=expected_alternatives,
+                                                         ds_captions_size=len(ds["val"]))
 
     wandb.init(
         project="audio-captioning",
@@ -116,6 +117,7 @@ def main(
         # dir="", # change for some tmp dir if you need
     )
 
+    assert wandb.run is not None
     training_args_dict_preset = {"output_dir": checkpoint_dir_root / wandb.run.name}
     with open(training_args_config, "r") as f:
         training_args_dict = yaml.safe_load(f)
@@ -138,6 +140,7 @@ def main(
         generate_kwargs={"max_length": training_args_dict["generation_max_length"]},
     )
 
+    callbacks: list[transformers.TrainerCallback]
     callbacks = [callback_log_val_preds, callback_log_dev_preds]
     
     if should_early_stop:
@@ -145,7 +148,7 @@ def main(
             raise ValueError("early_stopping_patience must be specified if should_early_stop is True")
         early_stopping_kwargs = dict(early_stopping_patience=early_stopping_patience)
         if early_stopping_threshold is not None:
-            early_stopping_kwargs["early_stopping_threshold"] = early_stopping_threshold
+            early_stopping_kwargs["early_stopping_threshold"] = early_stopping_threshold  # type: ignore
         early_stopping = transformers.EarlyStoppingCallback(**early_stopping_kwargs)
         callbacks.append(early_stopping)
 
@@ -161,7 +164,7 @@ def main(
     )
 
     trainer.train()
-    trainer.save_model(trainer.args.output_dir / "final")
+    trainer.save_model(str(pathlib.Path(trainer.args.output_dir) / "final"))
 
 
 def get_whisper_model(
@@ -172,12 +175,15 @@ def get_whisper_model(
 ) -> WhisperForAudioCaptioning:
     
     if use_pretrained_whisper_encoder and use_pretrained_whisper_decoder:
-        return WhisperForAudioCaptioning.from_pretrained(config_name)
+        model = WhisperForAudioCaptioning.from_pretrained(config_name)
+        assert isinstance(model, WhisperForAudioCaptioning)
+        return model
     
     if not use_pretrained_whisper_encoder and not use_pretrained_whisper_decoder:
         return WhisperForAudioCaptioning(config)
     
     model_pretrained = WhisperForAudioCaptioning.from_pretrained(config_name)
+    assert isinstance(model_pretrained, WhisperForAudioCaptioning)
     model = WhisperForAudioCaptioning(config)
 
     if use_pretrained_whisper_encoder:
@@ -189,7 +195,7 @@ def get_whisper_model(
     del model_pretrained
     return model
 
-def get_expected_lists(jsonl_path: pathlib.Path) -> Tuple[List[str], List[str]]:
+def get_expected_lists(jsonl_path: pathlib.Path) -> tuple[list[str], list[list[str]]]:
     df = pd.read_json(jsonl_path, lines=True)
     expected_captions = df["caption1"].tolist()
     expected_alternatives = df[[c for c in df.columns if c.startswith("caption")]].values.tolist()
@@ -198,7 +204,7 @@ def get_expected_lists(jsonl_path: pathlib.Path) -> Tuple[List[str], List[str]]:
 
 def get_clotho_dataset(clotho_dir: pathlib.Path,
                        tokenizer: transformers.PreTrainedTokenizer,
-                       feature_extractor: transformers.PreTrainedFeatureExtractor,
+                       feature_extractor: transformers.SequenceFeatureExtractor,
                        num_dev_examples_to_log_preds: int,
                        num_val_examples_to_log_preds: int,
                        limit_dev_split_size: Optional[int],
@@ -295,7 +301,7 @@ def get_clotho_dataset(clotho_dir: pathlib.Path,
 
 def get_audioset_dataset(audioset_dir: pathlib.Path,
                          tokenizer: transformers.PreTrainedTokenizer,
-                         feature_extractor: transformers.PreTrainedFeatureExtractor,
+                         feature_extractor: transformers.SequenceFeatureExtractor,
                          num_dev_examples_to_log_preds: int,
                          num_val_examples_to_log_preds: int,
                          limit_dev_split_size: Optional[int],
@@ -392,7 +398,7 @@ def get_audioset_dataset(audioset_dir: pathlib.Path,
 
 def get_audiocaps_dataset(audiocaps_dir: pathlib.Path,
                           tokenizer: transformers.PreTrainedTokenizer,
-                          feature_extractor: transformers.PreTrainedFeatureExtractor,
+                          feature_extractor: transformers.SequenceFeatureExtractor,
                           num_dev_examples_to_log_preds: int,
                           num_val_examples_to_log_preds: int,
                           limit_dev_split_size: Optional[int],
