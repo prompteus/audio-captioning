@@ -1,10 +1,9 @@
-name: audioCaps
+name: audiocap
 channels:
   - bioconda
   - defaults
 dependencies:
   - ffprobe
   - ffmpeg=4.2.2=h20bf706_0
-#   - java-jdk=8.0.92
+  - java-jdk=8.0.92
 
-  # update pls (conda env: audioCaps)
