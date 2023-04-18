@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid", 830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run finetuning",
+            "type": "python",
+            "request": "launch",
+            "program": "audiocap/train_whisper_supervised.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+            },
+            "args": [
+                "--checkpoint-dir-root", "./checkpoints", 
+                "--clotho-dir", "./data/clotho_v2.1",
+                "--training-config", "./configs/train_whisper_supervised_train_config.yaml", 
+                "--training-phase", "finetuning", 
+            ]
+        },
+        {
+            "name": "Run pretraining dummy",
+            "type": "python",
+            "request": "launch",
+            "program": "audiocap/train_whisper_supervised.py",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+            },
+            "args": [
+                "--checkpoint-dir-root", "./checkpoints", 
+                "--audioset-dir", "./data/audioset_small_dummy",
+                "--audiocaps-dir", "./data/audiocaps_dummy",
+                "--training-config", "./configs/train_whisper_supervised_train_config.yaml", 
+                "--training-phase", "pretraining", 
+            ]
+        }
+    ]
+}
