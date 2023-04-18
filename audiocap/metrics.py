@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Any, Union, List
+from typing import Dict, Any, Union, List, Tuple
 from pathlib import Path
 import json
 
@@ -43,7 +43,7 @@ def reformat_to_coco(predictions: List[str],
     """
     # Running number as ids for files if not given
     if ids is None:
-        ids = range(len(predictions))
+        ids = list(range(len(predictions)))
 
     # Captions need to be in format
     # [{
@@ -102,6 +102,7 @@ class SpiceMetric(evaluate.Metric):
         )
     
     def _compute(self, predictions, references, tokens=None):
+        assert tokens is not None
         res, gts = tokens
         _spice = Spice()
         (average_score, scores) = _spice.compute_score(gts, res)
@@ -130,6 +131,7 @@ class CiderMetric(evaluate.Metric):
         )
     
     def _compute(self, predictions, references, tokens=None):
+        assert tokens is not None
         res, gts = tokens
         (score, scores) = self.cider.compute_score(gts, res)
         return {"score": score, "scores": scores}
@@ -191,9 +193,9 @@ class CocoTokenizer:
         self.evalAudios = [eval for audioId, eval in self.audioToEval.items()]
 
 
-def keyword_metrics_single(*, y_pred: str, y_true: str):
-    y_pred = set(label.strip().strip('"').strip('') for label in y_pred.split(",")) - {""}
-    y_true = set(label.strip().strip('"').strip('') for label in y_true.split(",")) - {""}
+def keyword_metrics_single(*, y_pred_str: str, y_true_str: str):
+    y_pred = set(label.strip().strip('"').strip('') for label in y_pred_str.split(",")) - {""}
+    y_true = set(label.strip().strip('"').strip('') for label in y_true_str.split(",")) - {""}
     
     intersection = y_true & y_pred
     union = y_true | y_pred 
@@ -246,7 +248,7 @@ def keyword_metrics_batch(*, y_pred: list[str], y_true: list[str]):
     
     batch_size = len(y_pred)
     metrics = pd.DataFrame([
-        keyword_metrics_single(y_pred=y_pred[i], y_true=y_true[i])
+        keyword_metrics_single(y_pred_str=y_pred[i], y_true_str=y_true[i])
         for i in range(batch_size)
     ])
     
@@ -278,6 +280,7 @@ class CaptioningMetrics:
         if isinstance(preds, tuple):
             preds = preds[0]
 
+        assert self.tokenizer.pad_token_id is not None
         preds = np.where(preds != -100, preds, self.tokenizer.pad_token_id)
         trues = np.where(trues != -100, trues, self.tokenizer.pad_token_id)
 
