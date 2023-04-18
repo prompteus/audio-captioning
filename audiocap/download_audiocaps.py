@@ -109,7 +109,7 @@ def download_audiocaps_wavs(
     Download audiocaps dataset using the csvs obtained at https://github.com/cdjkim/audiocaps/tree/master/dataset
     
     RIGHT NOW the app is run by:
-    AUDIOCAPS_DIR=./data/audioCaps
+    AUDIOCAPS_DIR=./data/audiocaps
     python audiocap/download_audiocaps.py -w 2 -f 95000 -t 100000 $AUDIOCAPS_DIR"/csvs/debug.csv" $AUDIOCAPS_DIR"/audios/debug_set"
     
     Some files don't get fully downloaded - they're logged into unsuccessful_ids.log, but leave a '*.mp4.part' file behind.
