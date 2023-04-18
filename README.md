@@ -5,7 +5,7 @@
 
 Start by creating a conda environment:
 ```shell
-git clone ...
+git clone --recursive ... # recursive because there is `evaluation_tools` as git submodule
 cd audio-captioning
 conda create -n malach23 python=3.8
 conda activate malach23
@@ -82,6 +82,6 @@ mkdir -p logs/download_audioset
 
 ## Training
 
-To try out the training notebook, go to `notebooks/train_whisper_supervised.ipynb`
+To try out the training notebook, go to `audiocap/train_whisper_supervised.py`
 
 During training, the loss, metrics and example predictions are logged to `wandb`.

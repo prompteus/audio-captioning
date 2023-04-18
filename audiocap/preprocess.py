@@ -123,3 +123,4 @@ class DataCollatorAudioSeq2SeqWithPadding:
         batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
         batch["labels"] = labels
         return batch
+
