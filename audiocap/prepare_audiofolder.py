@@ -12,12 +12,6 @@ from tqdm.auto import tqdm
 app = typer.Typer()
 
 
-def print_suggestion(path: pathlib.Path) -> None:
-    print(f"{path} is prepared for loading with audiofolder. ")
-    print("To avoid accidental changes of the files inside the folder, run the following command:")
-    print(f"  chmod u-x '{path}'")
-
-
 @app.command()
 def prepare_clotho_audiofolder(
     clotho_path: pathlib.Path = typer.Argument(..., help="Path to the Clotho dataset")
@@ -49,7 +43,7 @@ def prepare_clotho_audiofolder(
         df = df_captions
         df.to_json(clotho_path / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print_suggestion(clotho_path)
+    print(f"{clotho_path} is prepared for loading with audiofolder. ")
 
 
 @app.command()
@@ -95,7 +89,8 @@ def prepare_audioset_small_audiofolder(
         df.drop(columns=["orig_split"], inplace=True)
         df.to_json(audioset_small_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print_suggestion(audioset_small_path / "audiofolder")
+    print(f"{audioset_small_path / 'audiofolder'} is prepared for loading with audiofolder. ")
+
 
 
 @app.command()
@@ -148,44 +143,8 @@ def prepare_audiocaps_audiofolder(
         df.drop(columns=["src", "tgt"], inplace=True)
         df.to_json(audiocaps_path / f"audiofolder/{split}/metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print_suggestion(audiocaps_path / "audiofolder")
+    print(f"{audiocaps_path / 'audiofolder'} is prepared for loading with audiofolder. ")
 
-
-@app.command()
-def prepare_audioset_audiofolder(
-    clotho_path: pathlib.Path = typer.Argument(..., help="Path to the Clotho dataset")
-) -> None:
-    import pandas as pd
-
-    expected_paths = [
-        clotho_path / "development/",
-        clotho_path / "evaluation/",
-        clotho_path / "validation/",
-        clotho_path / "test/",
-        clotho_path / "clotho_captions_development.csv",
-        clotho_path / "clotho_captions_evaluation.csv",
-        clotho_path / "clotho_captions_validation.csv",
-        clotho_path / "clotho_metadata_development.csv",
-        clotho_path / "clotho_metadata_evaluation.csv",
-        clotho_path / "clotho_metadata_validation.csv",
-        clotho_path / "clotho_metadata_test.csv",
-    ]
-    
-    for path in expected_paths:
-        if not path.exists():
-            print("your folder structure should contain: ")
-            # rich.print(expected_paths)
-            print("but it does not contain: " + str(path))
-            raise FileNotFoundError(path)
-
-    for split in ["development", "evaluation", "validation"]:
-        df_captions = pd.read_csv(clotho_path / f"clotho_captions_{split}.csv", engine="python")
-        df = df_captions
-        df.to_json(clotho_path / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
-
-    print("Clotho prepared for loading with audiofolder. ")
-    print("To avoid accidental changes of the files inside the folder, run the following command:")
-    print(f"  chmod u-x '{clotho_path}'")
 
 if __name__ == "__main__":
     app()
