@@ -105,7 +105,7 @@ def load_clotho(
 
     preprocessing_kwargs = {"source_ds": "clotho", "task": "caption"}
 
-    ds["dev"] = audiocap.data.load_ds_split(
+    ds["train"] = audiocap.data.load_ds_split(
         folder=audiofolder_root / "development",
         handle_multiple_captions="flatten",
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
@@ -163,7 +163,7 @@ def load_audioset_small(
     
     ontology = audiocap.audioset_tools.AudiosetOntology.from_json_file(audioset_ontology_json)
 
-    ds["dev"] = audiocap.data.load_ds_split(
+    ds["train"] = audiocap.data.load_ds_split(
         folder=audiofolder_root / "train",
         handle_multiple_captions="keep_first",
         caption_columns=["labels"],
@@ -218,7 +218,7 @@ def load_audiocaps(
 
     preprocessing_kwargs = {"source_ds": "audiocaps", "task": "caption"}
     
-    ds["dev"] = audiocap.data.load_ds_split(
+    ds["train"] = audiocap.data.load_ds_split(
         folder=audiofolder_root / "train",
         handle_multiple_captions="keep_first",
         caption_columns=["caption"],
