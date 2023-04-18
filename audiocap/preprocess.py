@@ -10,16 +10,18 @@ import librosa
 
 
 # TODO maybe TypedDict hints
-def flatten_captions(orig_batch: dict) -> dict:
+def flatten_captions(orig_batch: dict, caption_columns: list[str]) -> dict:
     batch_df = pd.DataFrame(dict(orig_batch))
+    # TODO melt changes order of rows, if there is a problem with shuffled order,
+    # this might be the reason
     batch_df = batch_df.melt(
         id_vars="audio",
-        var_name="caption_idx",
-        value_vars=[f"caption_{i}" for i in [1, 2, 3, 4, 5]],
+        var_name="caption_colname",
+        value_vars=caption_columns,
         value_name="caption",
     )
     batch: dict = batch_df.to_dict(orient="list")
-    assert set(["audio", "caption_idx", "caption"]) == set(batch.keys())
+    assert set(["audio", "caption_colname", "caption"]) == set(batch.keys())
     return batch
 
 
@@ -40,13 +42,13 @@ class Preprocess:
 
         # popping due huggingface column handling in map function
         rest = pd.DataFrame({k: orig_batch.pop(k) for k in list(orig_batch.keys())}) 
-        assert set(["caption_idx", "caption"]) == set(rest.keys())
+        assert set(["caption_colname", "caption"]) == set(rest.keys())
 
         assert orig_batch == {}
 
         assert len(audios) == len(rest)
         batch = pd.concat([audios, rest], axis="columns")
-        assert set(["path", "audio_array", "sampling_rate", "caption_idx", "caption"]) == set(batch.keys())
+        assert set(["path", "audio_array", "sampling_rate", "caption_colname", "caption"]) == set(batch.keys())
 
         batch["prefix"] = source_ds + " > " + task + ": "
         batch["forced_ac_decoder_ids"] = batch["prefix"].apply(lambda x: self.tokenizer("", text_target=x, add_special_tokens=False).labels)
