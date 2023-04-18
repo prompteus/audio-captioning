@@ -36,7 +36,7 @@ class AudiosetOntology:
         """
         
         if isinstance(label_ids, str):
-            label_ids = label_ids.split(",")        
+            label_ids = label_ids.split(",")
 
         label_ids = [label.strip().strip('"') for label in label_ids]
         names = []
@@ -60,6 +60,7 @@ class AudiosetOntology:
         Finds recursively all descendants of a label according to the ontology.
         """
         if label_id is None:
+            assert name is not None
             label_id = self.name_to_id(name)
         descendants = set()
         if include_self:
@@ -69,7 +70,7 @@ class AudiosetOntology:
         return self.df.loc[list(descendants)]
     
     def name_to_id(self, name: str) -> str:
-        return self.df[self.df["name"] == name].index[0]
+        return str(self.df[self.df["name"] == name].index[0])
 
 
 class AudiosetSubsetSelector:
