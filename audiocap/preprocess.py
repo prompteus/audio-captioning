@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pathlib
+import collections
 
 import pandas as pd
+import numpy as np
 import torch
 import torchaudio
 import transformers
@@ -36,37 +38,38 @@ class Preprocess:
         self.feature_extractor = feature_extractor
 
     # TODO maybe TypedDict hints
-    def __call__(self, orig_batch: dict, source_ds: str, task: str) -> dict:
+    def __call__(self, orig_batch: dict) -> dict:
         audios = pd.DataFrame(orig_batch.pop("audio")).rename(columns={"array": "audio_array"})
         assert set(["path", "audio_array", "sampling_rate"]) == set(audios.keys())
+        if isinstance(audios["audio_array"].iloc[0], list):
+            audios["audio_array"] = audios["audio_array"].apply(np.array)
 
         # popping due huggingface column handling in map function
         rest = pd.DataFrame({k: orig_batch.pop(k) for k in list(orig_batch.keys())}) 
-        assert set(["caption_colname", "caption"]) == set(rest.keys())
+        assert set(["caption_colname", "caption", "source_ds", "task"]) == set(rest.keys())
 
         assert orig_batch == {}
 
         assert len(audios) == len(rest)
         batch = pd.concat([audios, rest], axis="columns")
-        assert set(["path", "audio_array", "sampling_rate", "caption_colname", "caption"]) == set(batch.keys())
+        assert set(["path", "audio_array", "sampling_rate", "caption_colname", "caption", "source_ds", "task"]) == set(batch.keys())
 
-        batch["prefix"] = source_ds + " > " + task + ": "
+        batch["prefix"] = batch["source_ds"] + " > " + batch["task"] + ": "
         batch["forced_ac_decoder_ids"] = batch["prefix"].apply(lambda x: self.tokenizer("", text_target=x, add_special_tokens=False).labels)
-        # batch["caption"] = batch["prefix"] + batch["caption"]
-        batch["filename"] = batch["path"].apply(lambda path: pathlib.Path(path).name)
+        batch["filename"] = batch["path"].apply(lambda path: pathlib.Path(path).name if path is not None else None)
 
         # check suspicious shape and convert to mono
         test_sample = batch["audio_array"].iloc[0]
         if len(test_sample.shape) > 1 and test_sample.shape[0] > 10:
             print(f"WARNING: audio might have bad shape (switched channels and time), \
                   shape: {test_sample.shape}, \
-                  filename: {batch['filename'].iloc[0]} \
-                  ds_source: {source_ds}")  
+            #      filename: {batch['filename'].iloc[0]} \
+                  ds_source: {batch['source_ds'].iloc[0]}")  
         batch["audio_array"] = batch["audio_array"].apply(librosa.to_mono)
 
         assert (batch["audio_array"].apply(lambda x: x.ndim) == 1).all()
 
-        def resample(row) -> torch.Tensor:
+        def resample(row) -> np.ndarray:
             return torchaudio.functional.resample(
                 torch.tensor(row["audio_array"]),
                 row["sampling_rate"],
@@ -108,7 +111,7 @@ class DataCollatorAudioSeq2SeqWithPadding:
     def __call__(
         self,
         orig_batch: list[dict],
-    ) -> dict:
+    ) -> collections.UserDict:
         
         batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
         batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]

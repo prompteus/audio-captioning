@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Literal, Callable
+from typing import Any, Literal, Callable, Iterable
 
 import datasets
-import transformers
+import numpy as np
 
 import audiocap
 
@@ -13,12 +13,11 @@ def load_ds_split(
     folder: pathlib.Path | str,
     load_as_iterable: bool,
     handle_multiple_captions: Literal["flatten", "keep_first"],
+    source_ds: str, 
+    task: str,
     caption_columns: list[str],
     augment: bool,
     shuffle: bool,
-    preprocessing_kwargs: dict[str, Any],
-    tokenizer: transformers.WhisperTokenizer,
-    feature_extractor: transformers.WhisperFeatureExtractor,
     shuffle_seed: int | None = None,
     shuffle_buffer_size: int = 100,
     prepare_caption: Callable | None = None,
@@ -62,6 +61,8 @@ def load_ds_split(
     if prepare_caption is not None:
         ds = ds.map(lambda x: {"caption": prepare_caption(x["caption"])})
 
+    ds = ds.map(lambda x: {"source_ds": source_ds, "task": task})
+
     if augment:
         # TODO
         pass
@@ -71,16 +72,6 @@ def load_ds_split(
             ds = ds.shuffle(seed=shuffle_seed, buffer_size=shuffle_buffer_size)
         else:
             ds = ds.shuffle(seed=shuffle_seed)
-
-    preprocessing = audiocap.preprocess.Preprocess(tokenizer, feature_extractor)
-
-    ds = ds.map(
-        preprocessing,
-        batched=True,
-        batch_size=16,
-        fn_kwargs=preprocessing_kwargs,
-        remove_columns=["audio", "prefix"],
-    )
 
     if take_first_n is not None:
         if isinstance(ds, datasets.IterableDataset):
@@ -94,8 +85,6 @@ def load_ds_split(
 
 def load_clotho(
     audiofolder_root: pathlib.Path | str,
-    tokenizer: transformers.WhisperTokenizer,
-    feature_extractor: transformers.WhisperFeatureExtractor,
 ) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
     
     if isinstance(audiofolder_root, str):
@@ -103,7 +92,8 @@ def load_clotho(
 
     ds = {}
 
-    preprocessing_kwargs = {"source_ds": "clotho", "task": "caption"}
+    source_ds = "clotho"
+    task = "caption"
 
     ds["train"] = audiocap.data.load_ds_split(
         folder=audiofolder_root / "development",
@@ -112,9 +102,8 @@ def load_clotho(
         augment=True,
         shuffle=True,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     ds["val"] = audiocap.data.load_ds_split(
@@ -124,9 +113,8 @@ def load_clotho(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     ds["test"] = audiocap.data.load_ds_split(
@@ -136,9 +124,8 @@ def load_clotho(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     return ds
@@ -147,8 +134,6 @@ def load_clotho(
 def load_audioset_small(
     audiofolder_root: pathlib.Path | str,
     audioset_ontology_json: pathlib.Path | str,
-    tokenizer: transformers.WhisperTokenizer,
-    feature_extractor: transformers.WhisperFeatureExtractor,
 ) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
     
     if isinstance(audiofolder_root, str):
@@ -159,7 +144,8 @@ def load_audioset_small(
 
     ds = {}
 
-    preprocessing_kwargs = {"source_ds": "audioset", "task": "keywords"}
+    source_ds = "audioset"
+    task = "keywords"
     
     ontology = audiocap.audioset_tools.AudiosetOntology.from_json_file(audioset_ontology_json)
 
@@ -170,9 +156,8 @@ def load_audioset_small(
         augment=True,
         shuffle=True,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
         prepare_caption=ontology.audioset_label_ids_to_str,
     )
 
@@ -183,9 +168,8 @@ def load_audioset_small(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
         prepare_caption=ontology.audioset_label_ids_to_str,
     )
 
@@ -196,9 +180,8 @@ def load_audioset_small(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
         prepare_caption=ontology.audioset_label_ids_to_str,
     )
 
@@ -207,8 +190,6 @@ def load_audioset_small(
 
 def load_audiocaps(
     audiofolder_root: pathlib.Path | str,
-    tokenizer: transformers.WhisperTokenizer,
-    feature_extractor: transformers.WhisperFeatureExtractor,
 ) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
     
     if isinstance(audiofolder_root, str):
@@ -216,7 +197,8 @@ def load_audiocaps(
         
     ds = {}
 
-    preprocessing_kwargs = {"source_ds": "audiocaps", "task": "caption"}
+    source_ds = "audiocaps"
+    task = "caption"
     
     ds["train"] = audiocap.data.load_ds_split(
         folder=audiofolder_root / "train",
@@ -225,9 +207,8 @@ def load_audiocaps(
         augment=True,
         shuffle=True,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     ds["val"] = audiocap.data.load_ds_split(
@@ -237,9 +218,8 @@ def load_audiocaps(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     ds["test"] = audiocap.data.load_ds_split(
@@ -249,9 +229,64 @@ def load_audiocaps(
         augment=False,
         shuffle=False,
         load_as_iterable=True,
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        preprocessing_kwargs=preprocessing_kwargs,
+        source_ds=source_ds,
+        task=task,
     )
 
     return ds
+
+
+
+class OurInterleave:
+    def __init__(
+        self,
+        ds_list: list[datasets.IterableDataset],
+        stop_on_first_end: bool,
+        seed: int | None = None,
+        probs: list[float] | np.ndarray | None = None,
+    ) -> None:
+        self.ds_list = ds_list
+
+        if probs is None:
+            probs = np.ones(len(ds_list), dtype=np.float64) / len(ds_list)
+        self.probs = np.array(probs, dtype=np.float64)
+
+        if len(self.probs) != len(self.ds_list):
+            raise ValueError("probs and datasets must have the same length")
+        
+        self.stop_on_first_end = stop_on_first_end
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
+    
+    def __iter__(self):
+        iterators = [iter(ds) for ds in self.ds_list]
+        going = np.array([True] * len(self.ds_list))
+        probs = self.probs
+        while True:
+            if not np.any(going):
+                return
+            idx = self.rng.choice(len(self.ds_list), p=probs)
+            try:
+                yield next(iterators[idx])
+            except StopIteration:
+                if self.stop_on_first_end:
+                    return
+                going[idx] = False
+                probs = self.probs * going
+                probs /= probs.sum()
+
+    def __call__(self) -> Iterable:
+        return self
+    
+    def to_iterable_dataset(self) -> datasets.IterableDataset:
+        return datasets.IterableDataset.from_generator(self)
+
+
+def interleave_datasets(
+    ds_list: list[datasets.IterableDataset | datasets.Dataset],
+    stop_on_first_end: bool,
+    seed: int | None = None,
+    probs: list[float] | np.ndarray | None = None,
+) -> datasets.IterableDataset:
+    iterable_datasets = [ds if isinstance(ds, datasets.IterableDataset) else ds.to_iterable_dataset() for ds in ds_list]
+    return OurInterleave(iterable_datasets, stop_on_first_end, seed, probs).to_iterable_dataset()

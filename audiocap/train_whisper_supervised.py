@@ -61,29 +61,37 @@ def main(
 
         ds_audioset = audiocap.data.load_audioset_small(
             audioset_dir / "audiofolder",
-            audioset_dir / "annotations/ontology.json",
-            tokenizer,
-            feature_extractor
+            audioset_dir / "annotations/ontology.json"
         )
 
-        ds_audiocaps = audiocap.data.load_audiocaps(audiocaps_dir / "audiofolder", tokenizer, feature_extractor)
+        ds_audiocaps = audiocap.data.load_audiocaps(audiocaps_dir / "audiofolder")
         
         # TODO:
         # - add probabilities + handle if one ends before the other
-        # swap concat with interleave
-        ds = {
-            "train": datasets.concatenate_datasets([ds_audioset["train"], ds_audiocaps["train"]]),
-            "val": datasets.concatenate_datasets([ds_audioset["val"], ds_audiocaps["val"]]),
-            "test": datasets.concatenate_datasets([ds_audioset["test"], ds_audiocaps["test"]]),
-        }
+
+        ds = {}
+        for name in ds_audioset.keys():
+            splits = [ds_audioset[name].with_format("torch"), ds_audiocaps[name].with_format("torch")]
+            ds[name] = audiocap.data.interleave_datasets(splits, stop_on_first_end=False)
 
     elif training_phase == "finetuning":
         # prepare clotho dataset
-        ds = audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor)
+        ds = audiocap.data.load_clotho(clotho_dir)
 
     else:
         raise ValueError(f"training_phase should be either 'pretraining' or 'finetuning', but got {training_phase}")
     
+
+    preprocessing = audiocap.preprocess.Preprocess(tokenizer, feature_extractor)
+
+    for name, split in ds.items():
+        assert isinstance(split, datasets.IterableDataset)
+        ds[name] = split.map(
+            preprocessing,
+            batched=True,
+            batch_size=16,
+            remove_columns=["audio", "prefix"],
+        )
 
     # TODO REMOVE
     assert isinstance(ds["val"], datasets.IterableDataset)
