@@ -18,10 +18,10 @@ def prepare_clotho_audiofolder(
 ) -> None:
 
     expected_paths = [
-        clotho_path / "development/",
-        clotho_path / "evaluation/",
-        clotho_path / "validation/",
-        clotho_path / "test/",
+        clotho_path / "audiofolder/development/",
+        clotho_path / "audiofolder/evaluation/",
+        clotho_path / "audiofolder/validation/",
+        clotho_path / "audiofolder/test/",
         clotho_path / "clotho_captions_development.csv",
         clotho_path / "clotho_captions_evaluation.csv",
         clotho_path / "clotho_captions_validation.csv",
@@ -41,9 +41,9 @@ def prepare_clotho_audiofolder(
     for split in ["development", "evaluation", "validation"]:
         df_captions = pd.read_csv(clotho_path / f"clotho_captions_{split}.csv", engine="python")
         df = df_captions
-        df.to_json(clotho_path / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
+        df.to_json(clotho_path / "audiofolder" / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
-    print(f"{clotho_path} is prepared for loading with audiofolder. ")
+    print(f"{clotho_path / 'audiofolder'} is prepared for loading with audiofolder. ")
 
 
 @app.command()
@@ -57,6 +57,7 @@ def prepare_audioset_small_audiofolder(
         audioset_small_path / "annotations/train.jsonl",
         audioset_small_path / "annotations/valid.jsonl",
         audioset_small_path / "annotations/test.jsonl",
+        audioset_small_path / "annotations/ontology.json",
     ]
     
     for path in expected_paths:
@@ -67,6 +68,7 @@ def prepare_audioset_small_audiofolder(
             raise FileNotFoundError(path)
 
     os.makedirs(audioset_small_path / "audiofolder", exist_ok=True)
+    shutil.copy(audioset_small_path / "annotations/ontology.json", audioset_small_path / "audiofolder/ontology.json")
     for split in ["train", "valid", "test"]: 
         os.makedirs(audioset_small_path / f"audiofolder/{split}", exist_ok=True)
         df = pd.read_json(audioset_small_path / f"annotations/{split}.jsonl", lines=True)
