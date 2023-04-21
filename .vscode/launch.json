@@ -16,9 +16,9 @@
             },
             "args": [
                 "--checkpoint-dir-root", "./checkpoints", 
-                "--clotho-dir", "./data/clotho_v2.1",
+                "--clotho-dir", "./data/clotho_v2.1/audiofolder",
                 "--training-config", "./configs/train_whisper_supervised_train_config.yaml", 
-                "--training-phase", "finetuning", 
+                "--wandb-group", "debug-finetuning",
             ]
         },
         {
@@ -32,10 +32,10 @@
             },
             "args": [
                 "--checkpoint-dir-root", "./checkpoints", 
-                "--audioset-dir", "./data/audioset_small_dummy",
-                "--audiocaps-dir", "./data/audiocaps_dummy",
-                "--training-config", "./configs/train_whisper_supervised_train_config.yaml", 
-                "--training-phase", "pretraining", 
+                "--audioset-dir", "./data/audioset_small_dummy/audiofolder",
+                "--audiocaps-dir", "./data/audiocaps_dummy/audiofolder",
+                "--training-config", "./configs/train_whisper_supervised_train_config.yaml",
+                "--wandb-group", "debug-pretraining",
             ]
         }
     ]
