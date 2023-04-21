@@ -94,7 +94,7 @@ class SpiceMetric(evaluate.Metric):
             features=datasets.Features(
                 {
                     "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(datasets.Value("string", id="sequence")),
                 }
             ),
             codebase_urls=["https://github.com/tylin/coco-caption"],
@@ -123,7 +123,7 @@ class CiderMetric(evaluate.Metric):
             features=datasets.Features(
                 {
                     "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(datasets.Value("string", id="sequence")),
                 }
             ),
             codebase_urls=["https://github.com/tylin/coco-caption"],
@@ -193,7 +193,7 @@ class CocoTokenizer:
         self.evalAudios = [eval for audioId, eval in self.audioToEval.items()]
 
 
-def keyword_metrics_single(*, y_pred_str: str, y_true_str: str):
+def keyword_metrics_single(*, y_pred_str: str, y_true_str: str) -> dict[str, int | float]:
     y_pred = set(label.strip().strip('"').strip('') for label in y_pred_str.split(",")) - {""}
     y_true = set(label.strip().strip('"').strip('') for label in y_true_str.split(",")) - {""}
     
@@ -221,34 +221,50 @@ def keyword_metrics_single(*, y_pred_str: str, y_true_str: str):
         f1 = 0.0
 
     return {
-        "keywords_num_generated": len(y_pred),
-        "keywords_num_true": len(y_true),
+        "keywords_count_pred": len(y_pred),
+        "keywords_count_true": len(y_true),
         "keywords_precision": precision,
         "keywords_recall": recall,
         "keywords_f1": f1,
         "keywords_jaccard": jaccard,
     }
 
-def keyword_metrics_batch(*, y_pred: list[str], y_true: list[str]):
+
+def keyword_metrics_multireference(*, y_pred_str: str, y_true_str: str | list[str]) -> dict[str, float]:
+    if isinstance(y_true_str, str):
+        y_true_str = [y_true_str]
+
+    metrics = [keyword_metrics_single(y_pred_str=y_pred_str, y_true_str=y_true_str) for y_true_str in y_true_str]
+    metric_names = metrics[0].keys()
+    return {
+        key: float(np.mean([metric[key] for metric in metrics]))
+        for key in metric_names
+    }
+
+
+def keyword_metrics_batch(*, y_pred: list[str], y_true: list[str] | list[list[str]]) -> dict[str, float]:
     """
+    Computes the keyword metrics for a batch of predictions and references.
+    There can be multiple references per prediction.
+
     >>> keyword_metrics_batch(
     ...     y_pred = ["hello, darkness, my old friend", "a, b, c, d, e"],
     ...     y_true = ["hello, world,", "a, b, c, d"],
     ... )
-    {'keywords_num_generated': 4.0,
-     'keywords_num_true': 3.0,
+    {'keywords_count_pred': 4.0,
+     'keywords_count_true': 3.0,
      'keywords_precision': 0.5666666666666667,
      'keywords_recall': 0.75,
      'keywords_f1': 0.6444444444444445,
      'keywords_jaccard': 0.525}
-"""
+    """
 
     if len(y_pred) != len(y_true):
         raise ValueError("y_pred and y_true must have the same length")
     
     batch_size = len(y_pred)
     metrics = pd.DataFrame([
-        keyword_metrics_single(y_pred_str=y_pred[i], y_true_str=y_true[i])
+        keyword_metrics_multireference(y_pred_str=y_pred[i], y_true_str=y_true[i])
         for i in range(batch_size)
     ])
     
@@ -260,95 +276,108 @@ class CaptioningMetrics:
     def __init__(
         self,
         tokenizer: transformers.PreTrainedTokenizer,
-        expected_captions: list[str],
-        expected_alternatives: list[list[str]],
-        ds_captions_size: int,
+        ds_references: dict[str, list[list[str]]],
     ) -> None:
         self.sacrebleu = evaluate.load("sacrebleu")
         self.meteor = evaluate.load("meteor")
         self.spice = SpiceMetric()
         self.cider = CiderMetric()
         self.tokenizer = tokenizer
-        self.expected_captions = expected_captions
-        self.expected_alternatives = expected_alternatives
-        self.ds_captions_size = ds_captions_size
+        self.ds_references = ds_references
+        self.bounds = self.get_bounds(ds_references)
+        
+    def get_bounds(self, ds_references: dict[str, list[list[str]]]) -> dict[str, slice]:
+        bounds = [0]
+        for refs in ds_references.values():
+            bounds.append(bounds[-1] + len(refs))
+        return {
+            name: slice(s, e)
+            for name, (s, e)
+            in zip(ds_references.keys(), zip(bounds[:-1], bounds[1:]))
+        }
+        
+    def decompose_output(self, output: str) -> tuple[str, str, str]:
+        prefix, caption = output.split(": ", 1)
+        ds_name, task_name = prefix.split(">")
+        return ds_name.strip(), task_name.strip(), caption.strip()
+
+    def decompose_outputs(self, outputs: list[str]) -> tuple[list[str], list[str], list[str]]:
+        decomposed = pd.DataFrame(map(self.decompose_output, outputs))
+        ds_names, task_names, outputs = decomposed.to_dict(orient="list").values()
+        return ds_names, task_names, outputs
         
     def __call__(self, eval_preds: transformers.EvalPrediction) -> dict[str, float]:
-        preds = eval_preds.predictions
-        trues = eval_preds.label_ids
+        preds_all = eval_preds.predictions
+        trues_all = eval_preds.label_ids
 
-        if isinstance(preds, tuple):
-            preds = preds[0]
+        if isinstance(preds_all, tuple):
+            preds_all = preds_all[0]
 
         assert self.tokenizer.pad_token_id is not None
-        preds = np.where(preds != -100, preds, self.tokenizer.pad_token_id)
-        trues = np.where(trues != -100, trues, self.tokenizer.pad_token_id)
+        preds_all = np.where(preds_all != -100, preds_all, self.tokenizer.pad_token_id)
+        trues_all = np.where(trues_all != -100, trues_all, self.tokenizer.pad_token_id)
 
-        preds_str = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
-        trues_str = self.tokenizer.batch_decode(trues, skip_special_tokens=True)
+        preds_str_all = self.tokenizer.batch_decode(preds_all, skip_special_tokens=True)
+        trues_str_all = self.tokenizer.batch_decode(trues_all, skip_special_tokens=True)
 
-        # remove our fluff
-        preds_str = ["".join(pred.split(": ")[1:]) for pred in preds_str]
-        trues_str = ["".join(true.split(": ")[1:]) for true in trues_str]
+        # remove our fluff (dataset and task name) from the predictions and labels
+        preds_ds_names, preds_task_names, preds_str_all = self.decompose_outputs(preds_str_all)
+        ds_names_all, task_names_all, trues_str_all = self.decompose_outputs(trues_str_all)
 
-        # split on captions and keywords
-        preds_str_captions = preds_str[:self.ds_captions_size]
-        preds_str_keywords = preds_str[self.ds_captions_size:]
+        assert preds_ds_names == ds_names_all, \
+            f"model was not forced the correct dataset name {next((x, y) for x, y in zip(preds_ds_names, ds_names_all) if x != y)}"
+        
+        assert preds_task_names == task_names_all, \
+            f"model was not forced the correct task name {next((x, y) for x, y in zip(preds_task_names, task_names_all) if x != y)}"
 
-        # check if trues_str are expected labels
-        # TODO bacha na nas fluff -> expected_captions jsou bez fluffu, jak jsou na tom trues_str?
-            # zkontrolovat uz jenom
-        assert trues_str[:self.ds_captions_size] == self.expected_captions, f"Expected labels: predicitons are different than expected."         
+        metrics_all = {}
+        
+        for ds_name in self.ds_references.keys():
+            references: list[list[str]] = self.ds_references[ds_name]
+            cutout = self.bounds[ds_name]
 
-        sacrebleu_score = self.sacrebleu.compute(predictions=preds_str_captions, references=self.expected_alternatives)
-        meteor_score = self.meteor.compute(predictions=preds_str_captions, references=self.expected_alternatives)
+            preds_str = preds_str_all[cutout]
+            trues_str = trues_str_all[cutout]
+            task_names = task_names_all[cutout]
+            
+            if trues_str != [alternatives[0] for alternatives in references]:
+                raise ValueError("Expected labels: predicitons are different than expected.")
 
-        # coco metrics
-        tokenizer = CocoTokenizer(preds_str_captions, self.expected_alternatives)
-        tokens = tokenizer.tokenize()
-        spice_score = self.spice.compute(predictions=preds_str_captions, references=self.expected_alternatives, tokens=tokens)
-        cider_score = self.cider.compute(predictions=preds_str_captions, references=self.expected_alternatives, tokens=tokens)
-        spider_score = 0.5 * (spice_score['average_score'] + cider_score['score'])
-
-        pred_num_tokens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds[:self.ds_captions_size]]
-
-        logged_dict = {
-            "sacrebleu_captions": sacrebleu_score['score'],
-            "meteor_captions": meteor_score['meteor'],
-            "spice_captions": spice_score['average_score'],
-            "cider_captions": cider_score['score'],
-            "spider_captions": spider_score,
-            "num_tokens_captions": float(np.mean(pred_num_tokens)),
-        }
-
-        # if keywords are present, compute the metrics for them
-        if len(preds_str_keywords) > 0:
-            trues_str_keywords = trues_str[self.ds_captions_size:]
-            keywords_metrics = keyword_metrics_batch(
-                y_pred=preds_str_keywords,
-                y_true=trues_str_keywords
-            )
-            logged_dict.update(keywords_metrics)
-
-            sacrebleu_score_keywords = self.sacrebleu.compute(predictions=preds_str_keywords, references=trues_str_keywords)
-            meteor_score_keywords = self.meteor.compute(predictions=preds_str_keywords, references=trues_str_keywords)
+            sacrebleu_score = self.sacrebleu.compute(predictions=preds_str, references=references)
+            meteor_score = self.meteor.compute(predictions=preds_str, references=references)
 
             # coco metrics
-            tokenizer = CocoTokenizer(preds_str_keywords, trues_str_keywords)
+            tokenizer = CocoTokenizer(preds_str, references)
             tokens = tokenizer.tokenize()
-            spice_score_keywords = self.spice.compute(predictions=preds_str_keywords, references=trues_str_keywords, tokens=tokens)
-            cider_score_keywords = self.cider.compute(predictions=preds_str_keywords, references=trues_str_keywords, tokens=tokens)
-            spider_score_keywords = 0.5 * (spice_score_keywords['average_score'] + cider_score_keywords['score'])
+            spice_score = self.spice.compute(predictions=preds_str, references=references, tokens=tokens)
+            cider_score = self.cider.compute(predictions=preds_str, references=references, tokens=tokens)
+        
+            # make mypy shut up
+            assert spice_score is not None
+            assert cider_score is not None
+            assert sacrebleu_score is not None
+            assert meteor_score is not None
 
-            pred_num_tokens_keywords = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds[:self.ds_captions_size]]
+            spider_score = 0.5 * (spice_score['average_score'] + cider_score['score'])
 
-            logged_dict.update({
-                "sacrebleu_keywords": sacrebleu_score_keywords['score'],
-                "meteor_keywords": meteor_score_keywords['meteor'],
-                "spice_keywords": spice_score_keywords['average_score'],
-                "cider_keywords": cider_score_keywords['score'],
-                "spider_keywords": spider_score_keywords,
-                "num_tokens_keywords": float(np.mean(pred_num_tokens_keywords)),
+            pred_num_words = np.mean([len(pred.split()) for pred in preds_str])
+            true_num_words = np.mean([len(true.split()) for true in trues_str])
+
+            metrics_all.update({
+                f"{ds_name}/sacrebleu": sacrebleu_score['score'],
+                f"{ds_name}/meteor": meteor_score['meteor'],
+                f"{ds_name}/spice": spice_score['average_score'],
+                f"{ds_name}/cider": cider_score['score'],
+                f"{ds_name}/spider": spider_score,
+                f"{ds_name}/pred_num_words": float(pred_num_words),
+                f"{ds_name}/true_num_words": float(true_num_words),
             })
 
-        return logged_dict
+            if any("keyword" in task_name for task_name in task_names):
+                keyword_metrics = keyword_metrics_batch(y_pred=preds_str, y_true=references)
+                metrics_all.update({
+                    f"{ds_name}/{name}": value
+                    for name, value in keyword_metrics.items()
+                })
+
+        return metrics_all

@@ -10,6 +10,7 @@ import wandb
 import torch 
 import typer
 import yaml
+import torchdata.datapipes as dp
 import pandas as pd
 
 import audiocap.metrics
@@ -23,13 +24,13 @@ app = typer.Typer(pretty_exceptions_enable=False)
 @app.command()
 def main(
     checkpoint_dir_root: pathlib.Path = typer.Option(..., dir_okay=True, file_okay=False, readable=True, help="Path to the directory where checkpoints will be saved"),
-    training_phase: str = typer.Option(..., help="Name of the training phase, either pretraining or finetuning"),
     clotho_dir: pathlib.Path = typer.Option(None, dir_okay=True, file_okay=False, readable=True, help="Path to the directory with the Clotho dataset"),
     audioset_dir: pathlib.Path = typer.Option(None, dir_okay=True, file_okay=False, readable=True, help="Path to the directory with the Audioset dataset"),
     audiocaps_dir: pathlib.Path = typer.Option(None, dir_okay=True, file_okay=False, readable=True, help="Path to the directory with the Audiocaps dataset"),
     #limit_train_split_size: Optional[int] = typer.Option(None, help="Limit the dev split size (for debugging purposes)"),
     #limit_valid_split_size: Optional[int] = typer.Option(..., help="Limit the val split size (for debugging purposes)"),
     training_config: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, readable=True, help="yaml file with the training config"),
+    wandb_group: Optional[str] = typer.Option(None, help="Wandb group"),
 ) -> None:
     
     for i in range(torch.cuda.device_count()):
@@ -39,15 +40,16 @@ def main(
         training_config_dict = yaml.safe_load(f)
 
     training_args_dict = training_config_dict["hf_training_args"]
-    remaining_args_dict = training_config_dict["remaining_training_args"]
 
-    architecture_name = remaining_args_dict["architecture_name"]
-    use_pretrained_encoder = remaining_args_dict["use_pretrained_whisper_encoder"]
-    use_pretrained_decoder = remaining_args_dict["use_pretrained_whisper_decoder"]
+    architecture_config = training_config_dict["architecture"]
+    architecture_name = architecture_config["name"]
+    use_pretrained_encoder = architecture_config["use_pretrained_whisper_encoder"]
+    use_pretrained_decoder = architecture_config["use_pretrained_whisper_decoder"]
 
-    should_early_stop = remaining_args_dict["should_early_stop"]
-    early_stopping_patience = remaining_args_dict["early_stopping_patience"]
-    early_stopping_threshold = remaining_args_dict["early_stopping_threshold"]
+    early_stopping_config = training_config_dict["early_stopping"]
+    should_early_stop = early_stopping_config["should_early_stop"]
+    early_stopping_patience = early_stopping_config["early_stopping_patience"]
+    early_stopping_threshold = early_stopping_config["early_stopping_threshold"]
 
     config = transformers.WhisperConfig.from_pretrained(architecture_name)
     model = transformers.WhisperConfig.from_pretrained(architecture_name)
@@ -57,70 +59,45 @@ def main(
     model = get_whisper_model(architecture_name, config, use_pretrained_encoder, use_pretrained_decoder)
     
 
-    if training_phase == "pretraining":
+    audiofolders: list[dict[str, audiocap.data.AudioFolder]] = []
 
-        ds_audioset = audiocap.data.load_audioset_small(
-            audioset_dir / "audiofolder",
-            audioset_dir / "annotations/ontology.json"
-        )
+    if clotho_dir is not None:
+        audiofolders.append(audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor))
 
-        ds_audiocaps = audiocap.data.load_audiocaps(audiocaps_dir / "audiofolder")
-        
-        # TODO:
-        # - add probabilities + handle if one ends before the other
+    if audioset_dir is not None:
+        audiofolders.append(audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor))
 
-        ds = {}
-        for name in ds_audioset.keys():
-            splits = [ds_audioset[name].with_format("torch"), ds_audiocaps[name].with_format("torch")]
-            ds[name] = audiocap.data.interleave_datasets(splits, stop_on_first_end=False)
+    if audiocaps_dir is not None:
+        audiofolders.append(audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor))
 
-    elif training_phase == "finetuning":
-        # prepare clotho dataset
-        ds = audiocap.data.load_clotho(clotho_dir)
+    if len(audiofolders) == 0:
+        raise ValueError("No dataset specified")
 
-    else:
-        raise ValueError(f"training_phase should be either 'pretraining' or 'finetuning', but got {training_phase}")
-    
+    dataset = {}
+    dataset["train"] = dp.iter.Concater(*[af["train"].pipe for af in audiofolders]) # TODO add weights
+    dataset["val"] = dp.iter.Concater(*[af["val"].pipe for af in audiofolders])
+    dataset["test"] = dp.iter.Concater(*[af["test"].pipe for af in audiofolders])
 
-    preprocessing = audiocap.preprocess.Preprocess(tokenizer, feature_extractor)
-
-    for name, split in ds.items():
-        assert isinstance(split, datasets.IterableDataset)
-        ds[name] = split.map(
-            preprocessing,
-            batched=True,
-            batch_size=16,
-            remove_columns=["audio", "prefix"],
-        )
-
-    # TODO REMOVE
-    assert isinstance(ds["val"], datasets.IterableDataset)
-    ds["val"] = ds["val"].take(10)
+    ds_val_references = {
+        af["val"].source_ds: af["val"].alternative_captions
+        for af in audiofolders
+    }
 
     collator = audiocap.preprocess.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
-
-    # compute_metrics = audiocap.metrics.CaptioningMetrics(
-    #     tokenizer, 
-    #     expected_captions=expected_captions,
-    #     expected_alternatives=expected_alternatives,
-    #     ds_captions_size=len(ds["val"])
-    # )
+    compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_references)
 
     wandb.init(
         project="audio-captioning",
         tags=["supervised", architecture_name],
         save_code=True,
-        config={
-            "model": architecture_name,
-            "use_pretrained_whisper_encoder": use_pretrained_encoder,
-            "use_pretrained_whisper_decoder": use_pretrained_decoder,
-        },
-        # group="", # for organizing runs
-        # dir="", # change for some tmp dir if you need
+        config={key: val for key, val in training_config_dict.items() if key != "hf_training_args"},
+        group=wandb_group,
     )
 
     assert wandb.run is not None
-    training_args_dict_preset = {"output_dir": checkpoint_dir_root / wandb.run.name}
+    training_args_dict_preset: dict[str, Any] = {
+        "output_dir": checkpoint_dir_root / wandb.run.name
+    }
     training_args_dict = {**training_args_dict_preset, **training_args_dict}
     training_args = transformers.Seq2SeqTrainingArguments(**training_args_dict)
 
@@ -159,9 +136,9 @@ def main(
         model=model,
         tokenizer=tokenizer,
         data_collator=collator,
-        #compute_metrics=compute_metrics,
-        train_dataset=ds["train"],
-        eval_dataset=ds["val"],
+        compute_metrics=compute_metrics,
+        train_dataset=dataset["train"].header(10), # TODO REMOVE
+        eval_dataset=dataset["val"],
         args=training_args,
         callbacks=callbacks,
     )
@@ -197,28 +174,6 @@ def get_whisper_model(
     
     del model_pretrained
     return model
-
-
-
-# TODO assert keys
-
-    # expected_keys = {'caption_colname',
-    #                  'caption',
-    #                  'path',
-    #                  'audio_array',
-    #                  'sampling_rate',
-    #                  'filename',
-    #                  'input_features',
-    #                  'labels',
-    #                  'forced_ac_decoder_ids'}
-
-
-# def get_expected_lists(jsonl_path: pathlib.Path) -> tuple[list[str], list[list[str]]]:
-#     df = pd.read_json(jsonl_path, lines=True)
-#     expected_captions = df["caption1"].tolist()
-#     expected_alternatives = df[[c for c in df.columns if c.startswith("caption")]].values.tolist()
-
-#     return expected_captions, expected_alternatives
 
 
 if __name__ == "__main__":
