@@ -13,6 +13,11 @@ hf_training_args:
   per_device_eval_batch_size: 1
   eval_accumulation_steps: 8
 
+  # TODO all of these as well
+  dataloader_num_workers: 16
+  dataloader_pin_memory: True
+  dataloader_drop_last: False
+
   # Don't touch this
   logging_steps: 50
   report_to: "wandb"
@@ -27,7 +32,7 @@ hf_training_args:
   load_best_model_at_end: True
   predict_with_generate: True # NEVER TOUCH THIS
   generation_num_beams: 1 # TODO
-  generation_max_length: 40
+  generation_max_length: 80
   evaluation_strategy: "steps"
   eval_steps: 10 # TODO
 
@@ -36,16 +41,17 @@ hf_training_args:
   save_total_limit: 10 # TODO
 
 
-remaining_training_args:
+architecture:
+  name: "openai/whisper-tiny" # TODO
   use_pretrained_whisper_encoder: True
   use_pretrained_whisper_decoder: True
 
+early_stopping:
   should_early_stop: False
   early_stopping_patience: null
   early_stopping_threshold: null
 
-  architecture_name: "openai/whisper-tiny" # TODO
-
+logging:
   log_preds_every_n_steps: 10 # TODO
   num_train_examples_to_log_preds: 8 # TODO
   num_valid_examples_to_log_preds: 16 # TODO
