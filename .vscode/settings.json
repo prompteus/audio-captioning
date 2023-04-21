@@ -1,4 +1,16 @@
 {
     "jupyter.debugJustMyCode": false,
     "python.analysis.typeCheckingMode": "basic",
+    "files.watcherExclude": {
+        "**/data/audiocaps/audiofolder/**": true,
+        "**/data/audiocaps_dummy/audiofolder/**": true,
+        "**/data/audioset_full/audios/**": true,
+        "**/data/audioset_small/audiofolder/**": true,
+        "**/data/audioset_small_dummy/audiofolder/**": true,
+        "**/data/clotho_v2.1/audiofolder/**": true,
+        "**/wandb/": true,
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/__pycache__/**": true,
+    }
 }
