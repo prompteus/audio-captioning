@@ -1,240 +1,18 @@
 from __future__ import annotations
 
 import pathlib
+import functools
+import dataclasses
 from typing import Any, Literal, Callable, Iterable
 
 import datasets
+import librosa
+import pandas as pd
 import numpy as np
+import torchdata.datapipes as dp
+import transformers
 
 import audiocap
-
-
-def load_ds_split(
-    folder: pathlib.Path | str,
-    load_as_iterable: bool,
-    handle_multiple_captions: Literal["flatten", "keep_first"],
-    source_ds: str, 
-    task: str,
-    caption_columns: list[str],
-    augment: bool,
-    shuffle: bool,
-    shuffle_seed: int | None = None,
-    shuffle_buffer_size: int = 100,
-    prepare_caption: Callable | None = None,
-    take_first_n: int | None = None,
-) -> datasets.IterableDataset | datasets.Dataset:
-
-    if isinstance(folder, str):
-        folder = pathlib.Path(folder)
-
-    ds = datasets.load_dataset(
-        "audiofolder",
-        data_files={folder.stem: f"{folder}/*"}
-    )
-
-    assert isinstance(ds, (datasets.DatasetDict))
-
-    ds = ds[folder.stem]
-
-    if load_as_iterable:
-        # TODO does this shuffle the dataset because of multiprocessing or sth?
-        ds = ds.to_iterable_dataset()
-
-    assert isinstance(ds, (datasets.Dataset, datasets.IterableDataset))
-
-    if handle_multiple_captions == "flatten":
-        ds = ds.map(
-            audiocap.preprocess.flatten_captions,
-            batched=True,
-            batch_size=10,
-            remove_columns=caption_columns,
-            fn_kwargs={"caption_columns": caption_columns},
-        )
-    elif handle_multiple_captions == "keep_first":
-        if caption_columns[0] != "caption":
-            ds = ds.rename_column(caption_columns[0], "caption")
-        ds = ds.remove_columns(caption_columns[1:])
-        ds = ds.map(lambda x: {"caption_colname": caption_columns[0]})
-    else:
-        raise ValueError(f"Unknown handle_multiple_captions value: {handle_multiple_captions}") 
-    
-    if prepare_caption is not None:
-        ds = ds.map(lambda x: {"caption": prepare_caption(x["caption"])})
-
-    ds = ds.map(lambda x: {"source_ds": source_ds, "task": task})
-
-    if augment:
-        # TODO
-        pass
-
-    if shuffle:
-        if isinstance(ds, datasets.IterableDataset):
-            ds = ds.shuffle(seed=shuffle_seed, buffer_size=shuffle_buffer_size)
-        else:
-            ds = ds.shuffle(seed=shuffle_seed)
-
-    if take_first_n is not None:
-        if isinstance(ds, datasets.IterableDataset):
-            ds = ds.take(take_first_n)
-        elif isinstance(ds, datasets.Dataset):
-            ds = ds.select(range(take_first_n))
-
-    return ds
-
-
-
-def load_clotho(
-    audiofolder_root: pathlib.Path | str,
-) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
-    
-    if isinstance(audiofolder_root, str):
-        audiofolder_root = pathlib.Path(audiofolder_root)
-
-    ds = {}
-
-    source_ds = "clotho"
-    task = "caption"
-
-    ds["train"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "development",
-        handle_multiple_captions="flatten",
-        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
-        augment=True,
-        shuffle=True,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    ds["val"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "validation",
-        handle_multiple_captions="keep_first",
-        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    ds["test"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "evaluation",
-        handle_multiple_captions="keep_first",
-        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    return ds
-
-
-def load_audioset_small(
-    audiofolder_root: pathlib.Path | str,
-    audioset_ontology_json: pathlib.Path | str,
-) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
-    
-    if isinstance(audiofolder_root, str):
-        audiofolder_root = pathlib.Path(audiofolder_root)
-
-    if isinstance(audioset_ontology_json, str):
-        audioset_ontology_json = pathlib.Path(audioset_ontology_json)
-
-    ds = {}
-
-    source_ds = "audioset"
-    task = "keywords"
-    
-    ontology = audiocap.audioset_tools.AudiosetOntology.from_json_file(audioset_ontology_json)
-
-    ds["train"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "train",
-        handle_multiple_captions="keep_first",
-        caption_columns=["labels"],
-        augment=True,
-        shuffle=True,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-        prepare_caption=ontology.audioset_label_ids_to_str,
-    )
-
-    ds["val"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "valid",
-        handle_multiple_captions="keep_first",
-        caption_columns=["labels"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-        prepare_caption=ontology.audioset_label_ids_to_str,
-    )
-
-    ds["test"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "test",
-        handle_multiple_captions="keep_first",
-        caption_columns=["labels"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-        prepare_caption=ontology.audioset_label_ids_to_str,
-    )
-
-    return ds
-
-
-def load_audiocaps(
-    audiofolder_root: pathlib.Path | str,
-) -> dict[str, datasets.IterableDataset | datasets.Dataset]:
-    
-    if isinstance(audiofolder_root, str):
-        audiofolder_root = pathlib.Path(audiofolder_root)
-        
-    ds = {}
-
-    source_ds = "audiocaps"
-    task = "caption"
-    
-    ds["train"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "train",
-        handle_multiple_captions="keep_first",
-        caption_columns=["caption"],
-        augment=True,
-        shuffle=True,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    ds["val"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "valid",
-        handle_multiple_captions="keep_first",
-        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    ds["test"] = audiocap.data.load_ds_split(
-        folder=audiofolder_root / "test",
-        handle_multiple_captions="keep_first",
-        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
-        augment=False,
-        shuffle=False,
-        load_as_iterable=True,
-        source_ds=source_ds,
-        task=task,
-    )
-
-    return ds
-
 
 
 class OurInterleave:
@@ -290,3 +68,298 @@ def interleave_datasets(
 ) -> datasets.IterableDataset:
     iterable_datasets = [ds if isinstance(ds, datasets.IterableDataset) else ds.to_iterable_dataset() for ds in ds_list]
     return OurInterleave(iterable_datasets, stop_on_first_end, seed, probs).to_iterable_dataset()
+
+
+
+
+def add_cols(out_col: str | list[str] | dict, func = None, input_cols: str | list[str] | None = None):
+    def _func(row):
+        nonlocal input_cols
+
+        if isinstance(out_col, dict):
+            assert func is None
+            assert input_cols is None
+            row = row.copy()
+            for col, val in out_col.items():
+                row[col] = val
+            return row
+
+        assert func is not None
+        if input_cols is None:
+            outputs = func(row)
+        elif isinstance(input_cols, str):
+            outputs = func(row[input_cols])
+        else:
+            outputs = func(*[row[c] for c in input_cols])
+
+        if isinstance(out_col, str):
+            row[out_col] = outputs
+        else:
+            for col, output in zip(out_col, outputs):
+                row[col] = output
+        return row
+    return _func
+
+
+def rename_cols(mapper: dict[str, str]):
+    def _func(row: dict):
+        row = row.copy()
+        for old_colname, new_colname in mapper.items():
+            row[new_colname] = row.pop(old_colname)
+        return row
+    return _func
+
+
+def delete_cols(colnames: list[str]):
+    def _func(row: dict):
+        row = row.copy()
+        for colname in colnames:
+            del row[colname]
+        return row
+    return _func
+
+
+def flatten_captions(row: dict, colnames: list[str]) -> list[dict]:
+    row = row.copy()
+    caption_cols = {colname: row.pop(colname) for colname in colnames}
+    return [
+        {**row, "caption_colname": colname, "caption": caption }
+        for colname, caption in caption_cols.items()
+    ]
+
+
+class Preprocessing:
+    def __init__(
+        self,
+        tokenizer: transformers.WhisperTokenizer,
+        feature_extractor: transformers.WhisperFeatureExtractor,
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.feature_extractor = feature_extractor
+        self.num_features = feature_extractor.feature_size
+
+    def __call__(self, row: dict) -> dict:
+        row = row.copy()
+        features = self.feature_extractor(row["audio_array"], sampling_rate=row["sampling_rate"], return_tensors="pt")
+        row["input_features"] = features.input_features.reshape(self.num_features, -1)
+        row["prefix"] = row["source_ds"] + " > " + row["task"] + ": "
+        row["forced_ac_decoder_ids"] = self.tokenizer("", text_target=row["prefix"], add_special_tokens=False).labels
+        *fluff_tokens, eos = self.tokenizer("", text_target="", add_special_tokens=True).labels
+        labels = self.tokenizer("", text_target=row["caption"], add_special_tokens=False).labels
+        row["labels"] = fluff_tokens + row["forced_ac_decoder_ids"] + labels + [eos]
+        return row
+
+
+@dataclasses.dataclass
+class AudioFolder:
+    path: pathlib.Path | str
+    shuffle: bool
+    source_ds: str
+    task: str
+    tokenizer: transformers.WhisperTokenizer
+    feature_extractor: transformers.WhisperFeatureExtractor
+    handle_multiple_captions: str | None = None
+    caption_columns: list[str] | None = None
+    prepare_caption: Callable | None = None
+    shuffle_buffer_size: int = 10 # TODO
+    meta_filename: str = "metadata"
+
+    meta: pd.DataFrame = dataclasses.field(init=False)
+    pipe: dp.iter.IterDataPipe = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        if isinstance(self.path, str):
+            self.path = pathlib.Path(self.path)
+
+        self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
+
+        if self.caption_columns is None:
+            self.caption_columns = [c for c in self.meta.columns if str(c).startswith("caption")]
+
+        if len(self.caption_columns) > 1 and self.handle_multiple_captions is None:
+            raise ValueError("Multiple caption columns found. Please specify how to handle them using `handle_multiple_captions`.")
+
+        self.init_pipe()
+
+    def init_pipe(self):
+        self.preprocess = Preprocessing(
+            tokenizer=self.tokenizer,
+            feature_extractor=self.feature_extractor,
+        )
+
+        sampling_rate = self.feature_extractor.sampling_rate
+        assert self.caption_columns is not None
+
+        #rows = (row._asdict() for row in self.meta.itertuples(index=False))
+
+        pipe: dp.iter.IterDataPipe
+        pipe = dp.iter.IterableWrapper(self.meta.to_dict("records")) # type: ignore
+        pipe = pipe.sharding_filter()
+        pipe = pipe.map(add_cols("path", lambda row: self.path / row["file_name"]))
+        pipe = pipe.map(add_cols(["audio_array", "sampling_rate"], lambda row: librosa.load(row["path"], sr=sampling_rate, mono=True)))
+
+        if self.handle_multiple_captions == "flatten":
+            pipe = pipe.flatmap(lambda row: flatten_captions(row, self.caption_columns))
+        else:
+            first, *rest = self.caption_columns
+            pipe = pipe.map(rename_cols({first: "caption"}))
+            pipe = pipe.map(add_cols({"caption_colname": first}))
+            pipe = pipe.map(delete_cols(rest))
+
+        if self.prepare_caption is not None:
+            pipe = pipe.map(self.prepare_caption, input_col="caption")
+
+        if self.shuffle:
+            pipe = pipe.shuffle(buffer_size=self.shuffle_buffer_size)
+
+        pipe = pipe.map(add_cols({"source_ds": self.source_ds, "task": self.task}))
+        pipe = pipe.map(self.preprocess)
+        pipe = pipe.map(delete_cols(["audio_array", "path", "file_name", "source_ds", "task"]))
+        self.pipe = pipe
+
+    def __len__(self):
+        if self.handle_multiple_captions == "keep_first":
+            return len(self.meta)
+        elif self.handle_multiple_captions == "flatten":
+            assert self.caption_columns is not None
+            return len(self.meta) * len(self.caption_columns)
+        raise ValueError("Invalid value for `handle_multiple_captions`.")
+    
+    @functools.cached_property
+    def alternative_captions(self) -> list[list[str]]:
+        if self.handle_multiple_captions == "flatten":
+            raise NotImplementedError("Cannot return alternative captions when `handle_multiple_captions` is set to `flatten`.")
+        caps = self.meta[self.caption_columns]
+        if self.prepare_caption is not None:
+            caps = caps.applymap(self.prepare_caption)
+        return caps.values.tolist()
+    
+
+def load_clotho(
+    audiofolder_root: pathlib.Path | str,
+    tokenizer: transformers.WhisperTokenizer,
+    feature_extractor: transformers.WhisperFeatureExtractor,
+) -> dict[str, AudioFolder]:
+    
+    if isinstance(audiofolder_root, str):
+        audiofolder_root = pathlib.Path(audiofolder_root)
+
+    ds = {}
+
+    common_args = dict(
+        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
+        source_ds="clotho",
+        task="caption",
+        tokenizer=tokenizer,
+        feature_extractor=feature_extractor,
+    )
+
+    ds["train"] = AudioFolder(
+        path=audiofolder_root / "development",
+        handle_multiple_captions="flatten",
+        shuffle=True,
+        **common_args,
+    )
+
+    ds["val"] = AudioFolder(
+        path=audiofolder_root / "validation",
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        **common_args,
+    )
+
+    ds["val"] = AudioFolder(
+        path=audiofolder_root / "evaluation",
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        **common_args,
+    )
+
+    return ds
+
+
+def load_audioset(
+    audiofolder_root: pathlib.Path | str,
+    tokenizer: transformers.WhisperTokenizer,
+    feature_extractor: transformers.WhisperFeatureExtractor,
+) -> dict[str, AudioFolder]:
+    
+    if isinstance(audiofolder_root, str):
+        audiofolder_root = pathlib.Path(audiofolder_root)
+
+    ontology = audiocap.audioset_tools.AudiosetOntology.from_json_file(audiofolder_root / "ontology.json")
+
+    ds = {}
+
+    common_args = dict(
+        caption_columns=["labels"],
+        source_ds="audioset",
+        task="keywords",
+        tokenizer=tokenizer,
+        feature_extractor=feature_extractor,
+        prepare_caption=ontology.audioset_label_ids_to_str,
+    )
+
+    ds["train"] = AudioFolder(
+        path=audiofolder_root / "train",
+        shuffle=True,
+        **common_args,
+    )
+
+    ds["val"] = AudioFolder(
+        path=audiofolder_root / "valid",
+        shuffle=False,
+        **common_args,
+    )
+
+    ds["test"] = AudioFolder(
+        path=audiofolder_root / "test",
+        shuffle=False,
+        **common_args,
+    )
+
+    return ds
+
+
+def load_audiocaps(
+    audiofolder_root: pathlib.Path | str,
+    tokenizer: transformers.WhisperTokenizer,
+    feature_extractor: transformers.WhisperFeatureExtractor,
+) -> dict[str, AudioFolder]:
+    
+    if isinstance(audiofolder_root, str):
+        audiofolder_root = pathlib.Path(audiofolder_root)
+
+    ds = {}
+
+    common_args = dict(
+        source_ds="audiocaps",
+        task="caption",
+        tokenizer=tokenizer,
+        feature_extractor=feature_extractor,
+    )
+
+    ds["train"] = AudioFolder(
+        path=audiofolder_root / "train",
+        caption_columns=["caption"],
+        shuffle=True,
+        **common_args,
+    )
+
+    ds["val"] = AudioFolder(
+        path=audiofolder_root / "valid",
+        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        **common_args,
+    )
+
+    ds["test"] = AudioFolder(
+        path=audiofolder_root / "test",
+        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        **common_args,
+    )
+
+    return ds
