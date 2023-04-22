@@ -4,19 +4,18 @@ import pathlib
 from typing import Optional, Any
 
 import numpy as np
+import pandas as pd
 import transformers
-import datasets
 import wandb
 import torch 
 import typer
 import yaml
 import torchdata.datapipes as dp
-import pandas as pd
 
 import audiocap.metrics
-import audiocap.preprocess
+import audiocap.data
 import audiocap.callbacks
-from audiocap.models import WhisperForAudioCaptioning
+import audiocap.models
 
 
 app = typer.Typer(pretty_exceptions_enable=False)
@@ -37,7 +36,7 @@ def main(
         print(i, torch.cuda.get_device_properties(i))
 
     with open(training_config, "r") as f:
-        training_config_dict = yaml.safe_load(f)
+        training_config_dict: dict = yaml.safe_load(f)
 
     training_args_dict = training_config_dict["hf_training_args"]
 
@@ -83,7 +82,7 @@ def main(
         for af in audiofolders
     }
 
-    collator = audiocap.preprocess.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
+    collator = audiocap.data.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
     compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_references)
 
     wandb.init(
@@ -137,7 +136,7 @@ def main(
         tokenizer=tokenizer,
         data_collator=collator,
         compute_metrics=compute_metrics,
-        train_dataset=dataset["train"].header(10), # TODO REMOVE
+        train_dataset=dataset["train"],
         eval_dataset=dataset["val"],
         args=training_args,
         callbacks=callbacks,
@@ -152,19 +151,19 @@ def get_whisper_model(
     config: transformers.WhisperConfig,
     use_pretrained_whisper_encoder: bool,
     use_pretrained_whisper_decoder: bool,
-) -> WhisperForAudioCaptioning:
+) -> audiocap.WhisperForAudioCaptioning:
     
     if use_pretrained_whisper_encoder and use_pretrained_whisper_decoder:
-        model = WhisperForAudioCaptioning.from_pretrained(config_name)
-        assert isinstance(model, WhisperForAudioCaptioning)
+        model = audiocap.WhisperForAudioCaptioning.from_pretrained(config_name)
+        assert isinstance(model, audiocap.WhisperForAudioCaptioning)
         return model
     
     if not use_pretrained_whisper_encoder and not use_pretrained_whisper_decoder:
-        return WhisperForAudioCaptioning(config)
+        return audiocap.WhisperForAudioCaptioning(config)
     
-    model_pretrained = WhisperForAudioCaptioning.from_pretrained(config_name)
-    assert isinstance(model_pretrained, WhisperForAudioCaptioning)
-    model = WhisperForAudioCaptioning(config)
+    model_pretrained = audiocap.WhisperForAudioCaptioning.from_pretrained(config_name)
+    assert isinstance(model_pretrained, audiocap.WhisperForAudioCaptioning)
+    model = audiocap.WhisperForAudioCaptioning(config)
 
     if use_pretrained_whisper_encoder:
         model.model.encoder = model_pretrained.get_encoder()

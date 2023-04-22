@@ -3,105 +3,47 @@ from __future__ import annotations
 import pathlib
 import functools
 import dataclasses
-from typing import Any, Literal, Callable, Iterable
+import collections
+from typing import Literal, Callable
 
-import datasets
 import librosa
 import pandas as pd
 import numpy as np
+import torch
 import torchdata.datapipes as dp
 import transformers
 
 import audiocap
 
 
-class OurInterleave:
-    def __init__(
-        self,
-        ds_list: list[datasets.IterableDataset],
-        stop_on_first_end: bool,
-        seed: int | None = None,
-        probs: list[float] | np.ndarray | None = None,
-    ) -> None:
-        self.ds_list = ds_list
-
-        if probs is None:
-            probs = np.ones(len(ds_list), dtype=np.float64) / len(ds_list)
-        self.probs = np.array(probs, dtype=np.float64)
-
-        if len(self.probs) != len(self.ds_list):
-            raise ValueError("probs and datasets must have the same length")
-        
-        self.stop_on_first_end = stop_on_first_end
-        self.seed = seed
-        self.rng = np.random.default_rng(seed)
-    
-    def __iter__(self):
-        iterators = [iter(ds) for ds in self.ds_list]
-        going = np.array([True] * len(self.ds_list))
-        probs = self.probs
-        while True:
-            if not np.any(going):
-                return
-            idx = self.rng.choice(len(self.ds_list), p=probs)
-            try:
-                yield next(iterators[idx])
-            except StopIteration:
-                if self.stop_on_first_end:
-                    return
-                going[idx] = False
-                probs = self.probs * going
-                probs /= probs.sum()
-
-    def __call__(self) -> Iterable:
-        return self
-    
-    def to_iterable_dataset(self) -> datasets.IterableDataset:
-        return datasets.IterableDataset.from_generator(self)
-
-
-def interleave_datasets(
-    ds_list: list[datasets.IterableDataset | datasets.Dataset],
-    stop_on_first_end: bool,
-    seed: int | None = None,
-    probs: list[float] | np.ndarray | None = None,
-) -> datasets.IterableDataset:
-    iterable_datasets = [ds if isinstance(ds, datasets.IterableDataset) else ds.to_iterable_dataset() for ds in ds_list]
-    return OurInterleave(iterable_datasets, stop_on_first_end, seed, probs).to_iterable_dataset()
-
-
-
-
-def add_cols(out_col: str | list[str] | dict, func = None, input_cols: str | list[str] | None = None):
-    def _func(row):
-        nonlocal input_cols
-
-        if isinstance(out_col, dict):
-            assert func is None
-            assert input_cols is None
-            row = row.copy()
-            for col, val in out_col.items():
+def add_cols(colname: str | tuple[str, ...] | list[str], func: Callable) -> Callable:
+    def _func(row: dict):
+        row = row.copy()
+        if isinstance(colname, str):
+            row[colname] = func(row)
+        else:
+            for col, val in zip(colname, func(row)):
                 row[col] = val
-            return row
-
-        assert func is not None
-        if input_cols is None:
-            outputs = func(row)
-        elif isinstance(input_cols, str):
-            outputs = func(row[input_cols])
-        else:
-            outputs = func(*[row[c] for c in input_cols])
-
-        if isinstance(out_col, str):
-            row[out_col] = outputs
-        else:
-            for col, output in zip(out_col, outputs):
-                row[col] = output
         return row
     return _func
 
 
-def rename_cols(mapper: dict[str, str]):
+def del_cols(*args: str | tuple[str, ...] | list[str]) -> Callable:
+    colnames = []
+    for arg in args:
+        if isinstance(arg, str):
+            colnames.append(arg)
+        elif isinstance(arg, tuple) or isinstance(arg, list):
+            colnames.extend(arg)
+    def _func(row: dict):
+        return {
+            col: val for col, val in row.items()
+            if col not in colnames
+        }
+    return _func
+
+
+def rename_col(mapper: dict[str, str]) -> Callable:
     def _func(row: dict):
         row = row.copy()
         for old_colname, new_colname in mapper.items():
@@ -110,44 +52,41 @@ def rename_cols(mapper: dict[str, str]):
     return _func
 
 
-def delete_cols(colnames: list[str]):
+def explode_col(colnames: list[str], new_name: str, name_keep_in: str) -> Callable:
     def _func(row: dict):
         row = row.copy()
-        for colname in colnames:
-            del row[colname]
-        return row
+        caption_cols = {colname: row.pop(colname) for colname in colnames}
+        return [
+            {**row, name_keep_in: colname, new_name: caption }
+            for colname, caption in caption_cols.items()
+        ]
     return _func
+    
 
-
-def flatten_captions(row: dict, colnames: list[str]) -> list[dict]:
-    row = row.copy()
-    caption_cols = {colname: row.pop(colname) for colname in colnames}
-    return [
-        {**row, "caption_colname": colname, "caption": caption }
-        for colname, caption in caption_cols.items()
-    ]
-
-
-class Preprocessing:
-    def __init__(
-        self,
-        tokenizer: transformers.WhisperTokenizer,
-        feature_extractor: transformers.WhisperFeatureExtractor,
-    ) -> None:
+class PrepareLabels:
+    def __init__(self, tokenizer: transformers.WhisperTokenizer) -> None:
         self.tokenizer = tokenizer
+    
+    def __call__(self, prefix: str, caption: str) -> tuple[list[int], list[int]]:
+        forced_ac_decoder_ids = self.tokenizer("", text_target=prefix, add_special_tokens=False).labels
+        *fluff_tokens, eos = self.tokenizer("", text_target="", add_special_tokens=True).labels
+        labels = self.tokenizer("", text_target=caption, add_special_tokens=False).labels
+        labels = fluff_tokens + forced_ac_decoder_ids + labels + [eos]
+        return labels, forced_ac_decoder_ids
+
+
+class PreprocessAudio:
+    def __init__(self, feature_extractor: transformers.WhisperFeatureExtractor) -> None:
         self.feature_extractor = feature_extractor
         self.num_features = feature_extractor.feature_size
 
-    def __call__(self, row: dict) -> dict:
-        row = row.copy()
-        features = self.feature_extractor(row["audio_array"], sampling_rate=row["sampling_rate"], return_tensors="pt")
-        row["input_features"] = features.input_features.reshape(self.num_features, -1)
-        row["prefix"] = row["source_ds"] + " > " + row["task"] + ": "
-        row["forced_ac_decoder_ids"] = self.tokenizer("", text_target=row["prefix"], add_special_tokens=False).labels
-        *fluff_tokens, eos = self.tokenizer("", text_target="", add_special_tokens=True).labels
-        labels = self.tokenizer("", text_target=row["caption"], add_special_tokens=False).labels
-        row["labels"] = fluff_tokens + row["forced_ac_decoder_ids"] + labels + [eos]
-        return row
+    def __call__(self, audio_array: np.ndarray, sampling_rate: int) -> torch.Tensor:
+        features: torch.Tensor = self.feature_extractor(
+            audio_array,
+            sampling_rate=sampling_rate,
+            return_tensors="pt"
+        ).input_features
+        return features.reshape(self.num_features, -1)
 
 
 @dataclasses.dataclass
@@ -156,12 +95,13 @@ class AudioFolder:
     shuffle: bool
     source_ds: str
     task: str
+    caption_columns: list[str]
     tokenizer: transformers.WhisperTokenizer
     feature_extractor: transformers.WhisperFeatureExtractor
-    handle_multiple_captions: str | None = None
-    caption_columns: list[str] | None = None
+    handle_multiple_captions: Literal["explode", "keep_first"] | None = None
     prepare_caption: Callable | None = None
     shuffle_buffer_size: int = 10 # TODO
+    prefetch: int = 50 # TODO
     meta_filename: str = "metadata"
 
     meta: pd.DataFrame = dataclasses.field(init=False)
@@ -171,40 +111,43 @@ class AudioFolder:
         if isinstance(self.path, str):
             self.path = pathlib.Path(self.path)
 
-        self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
-
-        if self.caption_columns is None:
-            self.caption_columns = [c for c in self.meta.columns if str(c).startswith("caption")]
-
         if len(self.caption_columns) > 1 and self.handle_multiple_captions is None:
-            raise ValueError("Multiple caption columns found. Please specify how to handle them using `handle_multiple_captions`.")
+            raise ValueError(
+                "Multiple caption columns found. "
+                "Please specify how to handle them using `handle_multiple_captions`."
+            )
 
+        self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
         self.init_pipe()
 
     def init_pipe(self):
-        self.preprocess = Preprocessing(
-            tokenizer=self.tokenizer,
-            feature_extractor=self.feature_extractor,
-        )
-
-        sampling_rate = self.feature_extractor.sampling_rate
-        assert self.caption_columns is not None
-
-        #rows = (row._asdict() for row in self.meta.itertuples(index=False))
+        prepare_labels = PrepareLabels(self.tokenizer)
+        extract_features = PreprocessAudio(self.feature_extractor)
+        sr = self.feature_extractor.sampling_rate
+        prefix = self.source_ds + " > " + self.task + ": "
 
         pipe: dp.iter.IterDataPipe
-        pipe = dp.iter.IterableWrapper(self.meta.to_dict("records")) # type: ignore
-        pipe = pipe.sharding_filter()
-        pipe = pipe.map(add_cols("path", lambda row: self.path / row["file_name"]))
-        pipe = pipe.map(add_cols(["audio_array", "sampling_rate"], lambda row: librosa.load(row["path"], sr=sampling_rate, mono=True)))
+        pipe = dp.iter.IterableWrapper(self.meta.to_dict("records"), deepcopy=False) # type: ignore
 
-        if self.handle_multiple_captions == "flatten":
-            pipe = pipe.flatmap(lambda row: flatten_captions(row, self.caption_columns))
+        pipe = (
+            pipe
+            .sharding_filter()
+            .map(add_cols("path", lambda row: self.path / row["file_name"]))
+            .map(add_cols(("audio_array", "sampling_rate"), lambda row: librosa.load(row["path"], sr=sr, mono=True)))
+            .map(extract_features, ["audio_array", "sampling_rate"], "input_features")
+            .map(del_cols("audio_array", "path"))
+        )
+
+        if self.handle_multiple_captions == "explode":
+            pipe = pipe.flatmap(explode_col(self.caption_columns, "caption", "caption_colname"))
         else:
-            first, *rest = self.caption_columns
-            pipe = pipe.map(rename_cols({first: "caption"}))
-            pipe = pipe.map(add_cols({"caption_colname": first}))
-            pipe = pipe.map(delete_cols(rest))
+            first_col, *rest_cols = self.caption_columns
+            pipe = (
+                pipe
+                .map(rename_col({first_col: "caption"}))
+                .map(add_cols("caption_colname", lambda _: first_col))
+                .map(del_cols(rest_cols))
+            )
 
         if self.prepare_caption is not None:
             pipe = pipe.map(self.prepare_caption, input_col="caption")
@@ -212,22 +155,26 @@ class AudioFolder:
         if self.shuffle:
             pipe = pipe.shuffle(buffer_size=self.shuffle_buffer_size)
 
-        pipe = pipe.map(add_cols({"source_ds": self.source_ds, "task": self.task}))
-        pipe = pipe.map(self.preprocess)
-        pipe = pipe.map(delete_cols(["audio_array", "path", "file_name", "source_ds", "task"]))
+        pipe = (
+            pipe
+            .map(add_cols(("labels", "forced_ac_decoder_ids"), lambda row: prepare_labels(prefix, row["caption"])))
+            .prefetch(self.prefetch)
+        )
+
         self.pipe = pipe
 
     def __len__(self):
+        if len(self.caption_columns) == 1:
+            return len(self.meta)
         if self.handle_multiple_captions == "keep_first":
             return len(self.meta)
-        elif self.handle_multiple_captions == "flatten":
-            assert self.caption_columns is not None
+        if self.handle_multiple_captions == "explode":
             return len(self.meta) * len(self.caption_columns)
         raise ValueError("Invalid value for `handle_multiple_captions`.")
     
     @functools.cached_property
     def alternative_captions(self) -> list[list[str]]:
-        if self.handle_multiple_captions == "flatten":
+        if self.handle_multiple_captions == "explode":
             raise NotImplementedError("Cannot return alternative captions when `handle_multiple_captions` is set to `flatten`.")
         caps = self.meta[self.caption_columns]
         if self.prepare_caption is not None:
@@ -256,7 +203,7 @@ def load_clotho(
 
     ds["train"] = AudioFolder(
         path=audiofolder_root / "development",
-        handle_multiple_captions="flatten",
+        handle_multiple_captions="explode",
         shuffle=True,
         **common_args,
     )
@@ -363,3 +310,36 @@ def load_audiocaps(
     )
 
     return ds
+
+
+class DataCollatorAudioSeq2SeqWithPadding:
+
+    def __init__(
+        self,
+        tokenizer: transformers.WhisperTokenizer,
+        feature_extractor: transformers.WhisperFeatureExtractor,
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.feature_extractor = feature_extractor
+
+    def __call__(
+        self,
+        orig_batch: list[dict],
+    ) -> collections.UserDict:
+        
+        batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
+        batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
+        batch_forced_ac_decoder_ids = [x["forced_ac_decoder_ids"] for x in orig_batch]
+
+        batch = self.feature_extractor.pad(batch_features, return_tensors="pt")
+        batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
+        # replace padding with -100 to ignore loss correctly
+        labels = batch_labels["input_ids"].masked_fill(batch_labels.attention_mask != 1, -100)
+
+        if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
+            labels = labels[:, 1:]
+
+        batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
+        batch["labels"] = labels
+        return batch
+
