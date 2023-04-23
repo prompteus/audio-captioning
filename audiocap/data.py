@@ -106,9 +106,10 @@ class AudioFolder:
     drop_audio_array: bool = True
     sample_n: int | None = None
     seed: int | None = None
+    load_as_iterable: bool = True
 
     meta: pd.DataFrame = dataclasses.field(init=False)
-    pipe: dp.iter.IterDataPipe = dataclasses.field(init=False)
+    pipe: dp.iter.IterDataPipe | dp.map.MapDataPipe = dataclasses.field(init=False)
 
     def __post_init__(self):
         if isinstance(self.path, str):
@@ -169,10 +170,13 @@ class AudioFolder:
             pipe
             .map(add_cols("prefix", lambda _: prefix))
             .map(add_cols(("labels", "forced_ac_decoder_ids"), lambda row: prepare_labels(prefix, row["caption"])))
-            .prefetch(self.prefetch)
         )
 
-        self.pipe = pipe
+        if self.load_as_iterable:
+            self.pipe = pipe.prefetch(self.prefetch)
+        else:
+            self.pipe = pipe.enumerate().to_map_datapipe()
+
 
     def __len__(self):
         if len(self.caption_columns) == 1:
@@ -228,6 +232,7 @@ def load_clotho(
         shuffle=False,
         sample_n=train_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -245,6 +250,7 @@ def load_clotho(
         shuffle=False,
         sample_n=val_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -295,6 +301,7 @@ def load_audioset(
         shuffle=False,
         sample_n=train_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -310,6 +317,7 @@ def load_audioset(
         shuffle=False,
         sample_n=val_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -357,6 +365,7 @@ def load_audiocaps(
         shuffle=False,
         sample_n=train_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -376,6 +385,7 @@ def load_audiocaps(
         shuffle=False,
         sample_n=val_mini_size,
         drop_audio_array=False,
+        load_as_iterable=False,
         seed=seed,
         **common_args,
     )
@@ -389,6 +399,58 @@ def load_audiocaps(
     )
 
     return ds
+
+
+def load_dataset_mixture(
+    clotho_dir: pathlib.Path,
+    audioset_dir: pathlib.Path,
+    audiocaps_dir: pathlib.Path,
+    dataset_weights: dict[str, float],
+    log_preds_num_train: int,
+    log_preds_num_valid: int,
+    tokenizer: transformers.WhisperTokenizer,
+    feature_extractor: transformers.WhisperFeatureExtractor,
+):
+    audiofolders: list[dict[str, audiocap.data.AudioFolder]] = []
+
+    if clotho_dir is not None:
+        audiofolders.append(
+            audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+        )
+
+    if audioset_dir is not None:
+        audiofolders.append(
+            audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+        )
+
+    if audiocaps_dir is not None:
+        audiofolders.append(
+            audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+        )
+
+    if len(audiofolders) == 0:
+        raise ValueError("No dataset specified")
+
+    dataset = {}
+
+    dataset["train"] = dp.iter.SampleMultiplexer({
+        af["train"].pipe.cycle(): dataset_weights[af["train"].source_ds]
+        for af in audiofolders
+    })
+
+    for split in ["val", "test"]:
+        dataset[split] = dp.iter.Concater(*[af[split].pipe for af in audiofolders])
+    for split in ["train_mini", "val_mini"]:
+        dataset[split] = dp.map.Concater(*[af[split].pipe for af in audiofolders])
+
+
+    ds_val_references = {
+        af["val"].source_ds: af["val"].alternative_captions
+        for af in audiofolders
+    }
+
+    return dataset, audiofolders, ds_val_references
+
 
 
 class DataCollatorAudioSeq2SeqWithPadding:

@@ -18,10 +18,9 @@ hf_training_args:
   dataloader_pin_memory: True
   dataloader_drop_last: False
 
-  # Don't touch this
-  logging_steps: 50
+  logging_steps: 10 # TODO
   report_to: "wandb"
-  remove_unused_columns: False
+  remove_unused_columns: False # Don't touch this
 
   # TODO check if this makes training faster (or use less memory) in our setup
   fp16: False
@@ -51,8 +50,16 @@ early_stopping:
   early_stopping_patience: null
   early_stopping_threshold: null
 
+# TODO WHOLE THIS
 logging:
-  log_preds_every_n_steps: 10 # TODO
-  num_train_examples_to_log_preds: 8 # TODO
-  num_valid_examples_to_log_preds: 16 # TODO
+  log_preds_every_n_steps: 10
+  # these are per dataset
+  log_preds_num_train: 4
+  log_preds_num_valid: 8
 
+# TODO WHOLE THIS
+dataset_mix:
+  weights: 
+    clotho: 0.0
+    audioset: 1.0
+    audiocaps: 1.0
