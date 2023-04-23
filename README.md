@@ -14,6 +14,13 @@ pip install -e .
 ```
 If the last line does not work, update your pip. e.g. `pip install --upgrade pip`
 
+After you have the environment ready, run the script inside audiocap/evaluation_tools
+```
+chmod +x audiocap/evaluation_tools/coco_caption/get_stanford_models.sh
+./audiocap/evaluation_tools/coco_caption/get_stanford_models.sh
+```
+This will download the data necessary for computing evaluation metrics.
+
 
 
 ## Getting the Clotho dataset
