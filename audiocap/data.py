@@ -103,6 +103,9 @@ class AudioFolder:
     shuffle_buffer_size: int = 10 # TODO
     prefetch: int = 50 # TODO
     meta_filename: str = "metadata"
+    drop_audio_array: bool = True
+    sample_n: int | None = None
+    seed: int | None = None
 
     meta: pd.DataFrame = dataclasses.field(init=False)
     pipe: dp.iter.IterDataPipe = dataclasses.field(init=False)
@@ -118,6 +121,10 @@ class AudioFolder:
             )
 
         self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
+        if self.sample_n is not None:
+            self.meta = self.meta.sample(self.sample_n, random_state=self.seed)
+        if self.shuffle:
+            self.meta = self.meta.sample(frac=1, random_state=self.seed)
         self.init_pipe()
 
     def init_pipe(self):
@@ -135,8 +142,11 @@ class AudioFolder:
             .map(add_cols("path", lambda row: self.path / row["file_name"]))
             .map(add_cols(("audio_array", "sampling_rate"), lambda row: librosa.load(row["path"], sr=sr, mono=True)))
             .map(extract_features, ["audio_array", "sampling_rate"], "input_features")
-            .map(del_cols("audio_array", "path"))
+            .map(del_cols("path"))
         )
+
+        if self.drop_audio_array:
+            pipe = pipe.map(del_cols("audio_array"))
 
         if self.handle_multiple_captions == "explode":
             pipe = pipe.flatmap(explode_col(self.caption_columns, "caption", "caption_colname"))
@@ -157,6 +167,7 @@ class AudioFolder:
 
         pipe = (
             pipe
+            .map(add_cols("prefix", lambda _: prefix))
             .map(add_cols(("labels", "forced_ac_decoder_ids"), lambda row: prepare_labels(prefix, row["caption"])))
             .prefetch(self.prefetch)
         )
@@ -186,6 +197,9 @@ def load_clotho(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    train_mini_size: int,
+    val_mini_size: int,
+    seed: int,
 ) -> dict[str, AudioFolder]:
     
     if isinstance(audiofolder_root, str):
@@ -208,6 +222,16 @@ def load_clotho(
         **common_args,
     )
 
+    ds["train_mini"] = AudioFolder(
+        path=audiofolder_root / "development",
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        sample_n=train_mini_size,
+        drop_audio_array=False,
+        seed=seed,
+        **common_args,
+    )
+
     ds["val"] = AudioFolder(
         path=audiofolder_root / "validation",
         handle_multiple_captions="keep_first",
@@ -215,7 +239,17 @@ def load_clotho(
         **common_args,
     )
 
-    ds["val"] = AudioFolder(
+    ds["val_mini"] = AudioFolder(
+        path=audiofolder_root / "validation",
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        sample_n=val_mini_size,
+        drop_audio_array=False,
+        seed=seed,
+        **common_args,
+    )
+
+    ds["test"] = AudioFolder(
         path=audiofolder_root / "evaluation",
         handle_multiple_captions="keep_first",
         shuffle=False,
@@ -229,6 +263,9 @@ def load_audioset(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    train_mini_size: int,
+    val_mini_size: int,
+    seed: int,
 ) -> dict[str, AudioFolder]:
     
     if isinstance(audiofolder_root, str):
@@ -253,9 +290,27 @@ def load_audioset(
         **common_args,
     )
 
+    ds["train_mini"] = AudioFolder(
+        path=audiofolder_root / "train",
+        shuffle=False,
+        sample_n=train_mini_size,
+        drop_audio_array=False,
+        seed=seed,
+        **common_args,
+    )
+
     ds["val"] = AudioFolder(
         path=audiofolder_root / "valid",
         shuffle=False,
+        **common_args,
+    )
+
+    ds["val_mini"] = AudioFolder(
+        path=audiofolder_root / "valid",
+        shuffle=False,
+        sample_n=val_mini_size,
+        drop_audio_array=False,
+        seed=seed,
         **common_args,
     )
 
@@ -272,6 +327,9 @@ def load_audiocaps(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    train_mini_size: int,
+    val_mini_size: int,
+    seed: int,
 ) -> dict[str, AudioFolder]:
     
     if isinstance(audiofolder_root, str):
@@ -293,11 +351,32 @@ def load_audiocaps(
         **common_args,
     )
 
+    ds["train_mini"] = AudioFolder(
+        path=audiofolder_root / "train",
+        caption_columns=["caption"],
+        shuffle=False,
+        sample_n=train_mini_size,
+        drop_audio_array=False,
+        seed=seed,
+        **common_args,
+    )
+
     ds["val"] = AudioFolder(
         path=audiofolder_root / "valid",
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
         handle_multiple_captions="keep_first",
         shuffle=False,
+        **common_args,
+    )
+
+    ds["val_mini"] = AudioFolder(
+        path=audiofolder_root / "valid",
+        caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
+        handle_multiple_captions="keep_first",
+        shuffle=False,
+        sample_n=val_mini_size,
+        drop_audio_array=False,
+        seed=seed,
         **common_args,
     )
 
