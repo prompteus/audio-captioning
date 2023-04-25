@@ -413,17 +413,17 @@ def load_dataset_mixture(
 ):
     audiofolders: list[dict[str, audiocap.data.AudioFolder]] = []
 
-    if clotho_dir is not None:
+    if clotho_dir is not None and dataset_weights["clotho"] > 0.000001:
         audiofolders.append(
             audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
-    if audioset_dir is not None:
+    if audioset_dir is not None and dataset_weights["audioset"] > 0.000001:
         audiofolders.append(
             audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
-    if audiocaps_dir is not None:
+    if audiocaps_dir is not None and dataset_weights["audiocaps"] > 0.000001:
         audiofolders.append(
             audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
         )
