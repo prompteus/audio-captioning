@@ -123,7 +123,7 @@ class AudioFolder:
 
         self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
         if self.sample_n is not None:
-            self.meta = self.meta.sample(self.sample_n, random_state=self.seed)
+            self.meta = self.meta.sample(n=self.sample_n, random_state=self.seed)
         if self.shuffle:
             self.meta = self.meta.sample(frac=1, random_state=self.seed)
         self.init_pipe()
@@ -201,6 +201,7 @@ def load_clotho(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    limit_val_split: int | None,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -241,6 +242,8 @@ def load_clotho(
         path=audiofolder_root / "validation",
         handle_multiple_captions="keep_first",
         shuffle=False,
+        sample_n=limit_val_split,
+        seed=seed,
         **common_args,
     )
 
@@ -269,6 +272,7 @@ def load_audioset(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    limit_val_split: int | None,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -309,6 +313,8 @@ def load_audioset(
     ds["val"] = AudioFolder(
         path=audiofolder_root / "valid",
         shuffle=False,
+        sample_n=limit_val_split,
+        seed=seed,
         **common_args,
     )
 
@@ -335,6 +341,7 @@ def load_audiocaps(
     audiofolder_root: pathlib.Path | str,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    limit_val_split: int | None,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -375,6 +382,8 @@ def load_audiocaps(
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
         handle_multiple_captions="keep_first",
         shuffle=False,
+        sample_n=limit_val_split,
+        seed=seed,
         **common_args,
     )
 
@@ -406,6 +415,7 @@ def load_dataset_mixture(
     audioset_dir: pathlib.Path,
     audiocaps_dir: pathlib.Path,
     dataset_weights: dict[str, float],
+    datasets_val_limits: dict[str, int | None],
     log_preds_num_train: int,
     log_preds_num_valid: int,
     tokenizer: transformers.WhisperTokenizer,
@@ -415,17 +425,17 @@ def load_dataset_mixture(
 
     if clotho_dir is not None and dataset_weights["clotho"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, datasets_val_limits["clotho"], log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if audioset_dir is not None and dataset_weights["audioset"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, datasets_val_limits["audioset"], log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if audiocaps_dir is not None and dataset_weights["audiocaps"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, datasets_val_limits["audiocaps"], log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if len(audiofolders) == 0:

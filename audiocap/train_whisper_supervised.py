@@ -53,6 +53,7 @@ def main(
 
     dataset_mix_config = training_config_dict["dataset_mix"]
     dataset_weights = dataset_mix_config["weights"]
+    datasets_val_limits = dataset_mix_config["limit_val_split"]
 
     config = transformers.WhisperConfig.from_pretrained(architecture_name)
     tokenizer = transformers.WhisperTokenizer.from_pretrained(architecture_name, language="en", task="transcribe")
@@ -65,11 +66,16 @@ def main(
         audioset_dir,
         audiocaps_dir,
         dataset_weights,
+        datasets_val_limits,
         log_preds_num_train,
         log_preds_num_valid,
         tokenizer,
         feature_extractor,
     )
+
+    for ds in audiofolders:
+        for split_name, split in ds.items():
+            print(f"{split.source_ds} {split_name}: {len(split)} audio-caption pairs")
 
     compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_references)
     collator = audiocap.data.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
