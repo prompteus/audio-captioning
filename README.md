@@ -26,10 +26,10 @@ This will download the data necessary for computing evaluation metrics.
 ## Getting the Clotho dataset
 
 ```shell
-mkdir -p data/clotho_v2.1
+mkdir -p data/clotho_v2.1/audiofolder
 ```
 
-Download the data from <https://zenodo.org/record/4783391> and extract it into the data/clotho_v2.1 folder. Your tree structure should look like this
+Download the data from <https://zenodo.org/record/4783391> and extract csv into the `data/clotho_v2.1` and audios into `data/clotho_v2.1/audiofolder` folder. Your tree structure should look like this
 
 ```
 audio-captioning/
@@ -39,17 +39,18 @@ audio-captioning/
 |
 ├── data
 │   └── clotho_v2.1
+│       ├── audiofolder
+│       │   ├─ development
+│       │   ├─ evaluation
+│       │   ├─ test
+│       │   ├─ validation
 │       ├── clotho_captions_development.csv
 │       ├── clotho_captions_evaluation.csv
 │       ├── clotho_captions_validation.csv
 │       ├── clotho_metadata_development.csv
 │       ├── clotho_metadata_evaluation.csv
 │       ├── clotho_metadata_test.csv
-│       ├── clotho_metadata_validation.csv
-│       ├── development
-│       ├── evaluation
-│       ├── test
-│       └── validation
+│       └── clotho_metadata_validation.csv
 ...
 ```
 
@@ -59,7 +60,16 @@ Now, run
 python audiocap/prepare_audiofolder.py data/clotho_v2.1/
 ```
 
-This will prepare the folder into the format that is easily loadable by Huggingface datasets library: `datasets.load_dataset("audiofolder", ...)`
+This will prepare the folder into the format that is easily loadable.
+
+To limit a size of a split (like validation and evaluation), run:
+
+```shell
+python audiocap/prepare_audiofolder.py limit-clotho-split data/clotho_v2.1/audiofolder/ validation --limit 200
+python audiocap/prepare_audiofolder.py limit-clotho-split data/clotho_v2.1/audiofolder/ evaluation --limit 400
+```
+
+This will sample (with a seed) a subset with a desired size and move the remaining examples to the development split.
 
 
 ## Getting Audioset dataset

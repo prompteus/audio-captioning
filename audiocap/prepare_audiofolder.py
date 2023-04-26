@@ -1,11 +1,13 @@
 import os
 import pathlib
 import shutil
+from typing import Optional
 
 import joblib
 import typer
 import rich
 import pandas as pd
+import sklearn.model_selection
 
 from tqdm.auto import tqdm
 
@@ -14,7 +16,7 @@ app = typer.Typer()
 
 @app.command()
 def prepare_clotho_audiofolder(
-    clotho_path: pathlib.Path = typer.Argument(..., help="Path to the Clotho dataset")
+    clotho_path: pathlib.Path = typer.Argument(..., help="Path to the Clotho dataset"),
 ) -> None:
 
     expected_paths = [
@@ -39,11 +41,47 @@ def prepare_clotho_audiofolder(
             raise FileNotFoundError(path)
 
     for split in ["development", "evaluation", "validation"]:
-        df_captions = pd.read_csv(clotho_path / f"clotho_captions_{split}.csv", engine="python")
+        df_captions = pd.read_csv(clotho_path / f"clotho_captions_{split}.csv", engine="python")            
         df = df_captions
         df.to_json(clotho_path / "audiofolder" / split / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
 
     print(f"{clotho_path / 'audiofolder'} is prepared for loading with audiofolder. ")
+
+
+@app.command()
+def limit_clotho_split(
+    audiofolder: pathlib.Path = typer.Argument(..., help="Path to the Clotho audiofolder"),
+    split_name: str = typer.Argument(..., help="Name of the split to limit (evaluation, validation)"),
+    limit: Optional[int] = typer.Option(None, help="Limit the number of samples (move to development split)"),
+    seed: int = typer.Option(42, help="Seed for the random number generator"),
+):
+    if limit is None:
+        print("No limit given, doing nothing.")
+        return 
+    
+    df_to_limit = pd.read_json(audiofolder / split_name / "metadata.jsonl", lines=True)
+
+    if limit > len(df_to_limit):
+        print(f"limit ({limit}) is larger than the number of samples ({len(df_to_limit)}), doing nothing.")
+
+    df_dev = pd.read_json(audiofolder / "development/metadata.jsonl", lines=True)
+
+    moving, df_to_limit = sklearn.model_selection.train_test_split(df_to_limit, test_size=limit, random_state=seed)
+    assert isinstance(moving, pd.DataFrame)
+    assert isinstance(df_to_limit, pd.DataFrame)
+    df_dev = pd.concat([df_dev, moving])
+
+    for file in moving["file_name"]:
+        shutil.move(audiofolder / split_name / file, audiofolder / "development" / file)
+
+    df_dev.to_json(audiofolder / "development/metadata.jsonl", orient="records", force_ascii=False, lines=True)
+    df_to_limit.to_json(audiofolder / split_name / "metadata.jsonl", orient="records", force_ascii=False, lines=True)
+    for split in ["development", split_name]:
+        df = pd.read_json(audiofolder / f"{split}/metadata.jsonl", lines=True)
+        if not df["file_name"].apply(lambda x: os.path.exists(audiofolder / split / x)).all():
+            raise FileNotFoundError("Not all files exist! Please start again with a fresh clotho audiofolder.")
+    
+    print(f"Moved {len(moving)} samples from {split_name} to development. New {split_name} size: {len(df_to_limit)}. New development size: {len(df_dev)}.")
 
 
 @app.command()
