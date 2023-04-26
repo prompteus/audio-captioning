@@ -22,7 +22,7 @@ hf_training_args:
   report_to: "wandb"
   remove_unused_columns: False # Don't touch this
 
-  # TODO check if this makes training faster (or use less memory) in our setup
+  # TODO
   fp16: False
 
   metric_for_best_model: "sacrebleu" # TODO change
