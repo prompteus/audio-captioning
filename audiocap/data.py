@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import pathlib
 import functools
 import dataclasses
@@ -89,6 +90,14 @@ class PreprocessAudio:
         return features.reshape(self.num_features, -1)
 
 
+def librosa_load_safe(path: pathlib.Path, sr: int, mono: bool) -> tuple[np.ndarray, int] | tuple[None, int]:
+    try:
+        return librosa.load(path, sr=sr, mono=mono)
+    except Exception as e:
+        print(f"Error loading {path}: {e}", file=sys.stderr, flush=True)
+        return None, sr
+
+
 @dataclasses.dataclass
 class AudioFolder:
     path: pathlib.Path | str
@@ -100,8 +109,8 @@ class AudioFolder:
     feature_extractor: transformers.WhisperFeatureExtractor
     handle_multiple_captions: Literal["explode", "keep_first"] | None = None
     prepare_caption: Callable | None = None
-    shuffle_buffer_size: int = 10 # TODO
-    prefetch: int = 50 # TODO
+    shuffle_buffer_size: int = 100
+    prefetch: int = 50
     meta_filename: str = "metadata"
     drop_audio_array: bool = True
     sample_n: int | None = None
@@ -141,7 +150,8 @@ class AudioFolder:
             pipe
             .sharding_filter()
             .map(add_cols("path", lambda row: self.path / row["file_name"]))
-            .map(add_cols(("audio_array", "sampling_rate"), lambda row: librosa.load(row["path"], sr=sr, mono=True)))
+            .map(add_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
+            .filter(lambda row: row["audio_array"] is not None)
             .map(extract_features, ["audio_array", "sampling_rate"], "input_features")
             .map(del_cols("path"))
         )
