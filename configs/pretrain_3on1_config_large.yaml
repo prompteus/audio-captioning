@@ -56,7 +56,7 @@ logging:
 dataset_mix:
   weights: 
     clotho: 0.0
-    audioset: 1.0
+    audioset: 3.0
     audiocaps: 1.0
   limit_val_split:
     clotho: null
