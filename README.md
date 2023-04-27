@@ -269,7 +269,7 @@ Example:
 
 The prefix informs the model about the style of caption that is used. During inference, a prefix is
 forced to the decoder, which makes the model generate output in a desired style. This is a trick
-used in NLP in multilingual models where the prefix tells the model which language it should generate.
+inspired by multilingual generative language models where the prefix specifies the output language.
 
 
 ## Licence
