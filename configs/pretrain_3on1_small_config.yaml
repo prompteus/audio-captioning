@@ -8,9 +8,9 @@ hf_training_args:
   warmup_steps: 1000
 
   per_device_train_batch_size: 1
-  gradient_accumulation_steps: 32
+  gradient_accumulation_steps: 8
   per_device_eval_batch_size: 1
-  eval_accumulation_steps: 8
+  eval_accumulation_steps: 2
 
   dataloader_num_workers: 8
   dataloader_pin_memory: True
@@ -38,7 +38,7 @@ hf_training_args:
 
 
 architecture:
-  name: "openai/whisper-large-v2"
+  name: "openai/whisper-small"
   use_pretrained_whisper_encoder: True
   use_pretrained_whisper_decoder: True
 
@@ -56,7 +56,7 @@ logging:
 dataset_mix:
   weights: 
     clotho: 0.0
-    audioset: 1.0
+    audioset: 3.0
     audiocaps: 1.0
   limit_val_split:
     clotho: null

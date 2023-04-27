@@ -12,17 +12,36 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "CUDA_VISIBLE_DEVICES": "7",
+                "CUDA_VISIBLE_DEVICES": "8",
             },
             "args": [
                 "--checkpoint-dir-root", "./checkpoints", 
                 "--clotho-dir", "./data/clotho_v2.1/audiofolder",
-                "--training-config", "./configs/train_whisper_supervised_train_config.yaml", 
+                "--training-config", "./configs/finetune_tiny_config.yaml", 
                 "--wandb-group", "debug-finetuning",
             ]
         },
         {
-            "name": "Run pretraining dummy",
+            "name": "Run mix-all",
+            "type": "python",
+            "request": "launch",
+            "program": "audiocap/train_whisper_supervised.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "8",
+            },
+            "args": [
+                "--checkpoint-dir-root", "./checkpoints", 
+                "--clotho-dir", "./data/clotho_v2.1/audiofolder",
+                "--audioset-dir", "./data/audioset_small/audiofolder",
+                "--audiocaps-dir", "./data/audiocaps/audiofolder",
+                "--training-config", "./configs/DEBUG_tiny_config.yaml", 
+                "--wandb-group", "debug-mix-all",
+            ]
+        },
+        {
+            "name": "Run pretraining",
             "type": "python",
             "request": "launch",
             "program": "audiocap/train_whisper_supervised.py",
@@ -32,9 +51,9 @@
             },
             "args": [
                 "--checkpoint-dir-root", "./checkpoints", 
-                "--audioset-dir", "./data/audioset_small_dummy/audiofolder",
-                "--audiocaps-dir", "./data/audiocaps_dummy/audiofolder",
-                "--training-config", "./configs/train_whisper_supervised_train_config.yaml",
+                "--audioset-dir", "./data/audioset_small/audiofolder",
+                "--audiocaps-dir", "./data/audiocaps/audiofolder",
+                "--training-config", "./configs/pretrain_3on1_small_config.yaml",
                 "--wandb-group", "debug-pretraining",
             ]
         }

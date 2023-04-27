@@ -2,15 +2,15 @@ hf_training_args:
   do_train: True
   do_eval: True
 
-  max_steps: 1_000_000
+  max_steps: 100_000
   optim: "adamw_torch"
   learning_rate: 0.00002
-  warmup_steps: 1000
+  warmup_steps: 500
 
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 32
-  per_device_eval_batch_size: 1
-  eval_accumulation_steps: 8
+  per_device_train_batch_size: 16
+  gradient_accumulation_steps: 2
+  per_device_eval_batch_size: 16
+  eval_accumulation_steps: 1
 
   dataloader_num_workers: 8
   dataloader_pin_memory: True
@@ -22,23 +22,23 @@ hf_training_args:
 
   fp16: True
 
-  metric_for_best_model: "audiocaps/spider"
+  metric_for_best_model: "clotho/spider"
   greater_is_better: True
 
   load_best_model_at_end: True
   predict_with_generate: True # NEVER TOUCH THIS
   generation_num_beams: 1
-  generation_max_length: 80
+  generation_max_length: 12
   evaluation_strategy: "steps"
-  eval_steps: 900
+  eval_steps: 4
 
   save_strategy: "steps"
-  save_steps: 900
+  save_steps: 300
   save_total_limit: 5
 
 
 architecture:
-  name: "openai/whisper-large-v2"
+  name: "openai/whisper-tiny"
   use_pretrained_whisper_encoder: True
   use_pretrained_whisper_decoder: True
 
@@ -48,17 +48,17 @@ early_stopping:
   early_stopping_threshold: null
 
 logging:
-  log_preds_every_n_steps: 300
+  log_preds_every_n_steps: 4
   # these are per dataset
-  log_preds_num_train: 4
-  log_preds_num_valid: 10
+  log_preds_num_train: 2
+  log_preds_num_valid: 2
 
 dataset_mix:
   weights: 
-    clotho: 0.0
+    clotho: 1.0
     audioset: 1.0
     audiocaps: 1.0
   limit_val_split:
-    clotho: null
-    audioset: 200
-    audiocaps: null
+    clotho: 6
+    audioset: 8
+    audiocaps: 6
