@@ -171,7 +171,7 @@ so you have all AudioCaps audios prepared once you download AudioSet.
 
 
 <details>
-  <summary> Create a balanced AudioSet subset </summary>
+  <summary> Creating a balanced AudioSet subset </summary>
 
   This part is most intricate. We want at the same time
   - a diverse subset
@@ -188,7 +188,7 @@ so you have all AudioCaps audios prepared once you download AudioSet.
 
 
 <details>
-  <summary> Create AudioSet small AudioFolder </summary>
+  <summary> Creating AudioSet-small AudioFolder </summary>
 
     Run:
 
@@ -212,11 +212,20 @@ However, if you want to check corrupted files, you can use the `audiocap.data.fi
 
 ## Training
 
+We train in two phases. We pretrain on a mixture of AudioCaps and AudioSet small, and
+then finetune on Clotho.
+
+We monitor metrics (into wandb) on each dataset separately and also log some predictions
+so that one can see the outputs the model generates. 
+
+Because we can pretrain using the same audio-to-text objective as we do on finetuning,
+we can only have a single configurable training script.
+
 
 ### Pretraining 
 
-We pretrain on a mixture of AudioCaps and AudioSet small.
-AudioSet labels are converted on the fly to keyword-based synthetic captions.
+AudioSet is originally a classification dataset. During training, we convert the labels on the fly
+into keyword-based synthetic captions.
 
 ```shell
 CUDA_VISIBLE_DEVICES="..." python \
@@ -228,7 +237,7 @@ CUDA_VISIBLE_DEVICES="..." python \
     --wandb-group="pretraining"
 ```
 
-Argument `--training-config` is the most important - it specifies practically everything important about training.
+Argument `--training-config` is the most important - it specifies everything important about training.
 We experimented with different setups. you can find the different configs inside `configs/` folder.
 
 
@@ -248,14 +257,19 @@ CUDA_VISIBLE_DEVICES="..." python \
 TODO make it so that it can load a pretraing checkpoint from local file.
 
 
-## Evaluation
 
-TODO
+## Multitask training and inference
 
+To effectively train on multiple datasets, we put a dataset and task identifiers into the captions.
 
-## Inference
+Example:
+- **clotho > caption:** Fair kind music is being played at the circus grounds.
+- **audiocaps > caption:** The wind is blowing, insects are singing, and rustling occurs
+- **audioset > keywords:** boat - water vehicle, motorboat - speedboat, sounds of things, vehicle
 
-TODO
+The prefix informs the model about the style of caption that is used. During inference, a prefix is
+forced to the decoder, which makes the model generate output in a desired style. This is a trick
+used in NLP in multilingual models where the prefix tells the model which language it should generate.
 
 
 ## Licence
