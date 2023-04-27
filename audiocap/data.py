@@ -512,7 +512,8 @@ class DataCollatorAudioSeq2SeqWithPadding:
         return batch
 
 
-def find_corrupted_audios(folder: pathlib.Path, extension: str, num_workers: int) -> list[pathlib.Path]:
+def find_corrupted_audios(folder: pathlib.Path | str, extension: str, num_workers: int) -> list[pathlib.Path]:
+    folder = pathlib.Path(folder)
     corrupted = []
     with multiprocessing.Pool(num_workers) as pool:
         files = list(folder.glob(f"**/*.{extension}"))
