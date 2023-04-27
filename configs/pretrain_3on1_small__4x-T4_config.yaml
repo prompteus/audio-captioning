@@ -13,7 +13,7 @@ hf_training_args:
   per_device_eval_batch_size: 1
   eval_accumulation_steps: 2
 
-  dataloader_num_workers: 10
+  dataloader_num_workers: 8
   dataloader_pin_memory: True
   dataloader_drop_last: False
 
