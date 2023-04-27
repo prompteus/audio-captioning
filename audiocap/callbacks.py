@@ -135,7 +135,7 @@ class PredictionLogger(transformers.TrainerCallback):
                 "wandb_table": [self.log_prefix] * self.num_examples,
 
             })
-            with open(self.log_to_file, "a") as f:
+            with open(self.log_to_file, "a", encoding="utf-8") as f:
                 lines = logged_df.to_json(lines=True, orient="records", force_ascii=False)
                 f.write(lines)
 
