@@ -22,14 +22,27 @@ chmod +x audiocap/evaluation_tools/coco_caption/get_stanford_models.sh
 This will download the data necessary for computing evaluation metrics.
 
 
+## Preparing data
 
-## Getting the Clotho dataset
+We train on multiple datasets: Audioset (our selected subset), AudioCaps, and finally Clotho.
+To make it simple to work with multiple datasets downloaded them to convert them into a file
+structure that is as compatible as possible. We call it AudioFolder, because it is inspired
+by HuggingFace's AudioFolder or ImageFolder.
+
+While the datasets are not *completely* compatible (e.g. one caption vs multiple captions per
+audio clip), AudioFolder structure and python class `audiocap.data.AudioFolder` helps us work
+with them in a systematic way. The following sections explain how to get the data and prepare
+AudioFolder from them.
+
+
+
+### Getting the Clotho dataset
 
 ```shell
 mkdir -p data/clotho_v2.1/audiofolder
 ```
 
-Download the data from <https://zenodo.org/record/4783391> and extract csv into the `data/clotho_v2.1` and audios into `data/clotho_v2.1/audiofolder` folder. Your tree structure should look like this
+Download the data from <https://zenodo.org/record/4783391> and extract csv into the `data/clotho_v2.1` and audios into `data/clotho_v2.1/audiofolder` folder. Your tree structure should look like this:
 
 ```
 audio-captioning/
@@ -43,7 +56,7 @@ audio-captioning/
 │       │   ├─ development
 │       │   ├─ evaluation
 │       │   ├─ test
-│       │   ├─ validation
+│       │   └─ validation
 │       ├── clotho_captions_development.csv
 │       ├── clotho_captions_evaluation.csv
 │       ├── clotho_captions_validation.csv
@@ -54,10 +67,12 @@ audio-captioning/
 ...
 ```
 
-Now, run 
+### Create Clotho AudioFolder
+
+Now, prepare 
 
 ```shell
-python audiocap/prepare_audiofolder.py data/clotho_v2.1/
+python audiocap/prepare_audiofolder.py prepare-clotho-audiofolder data/clotho_v2.1/
 ```
 
 This will prepare the folder into the format that is easily loadable.
@@ -72,7 +87,7 @@ python audiocap/prepare_audiofolder.py limit-clotho-split data/clotho_v2.1/audio
 This will sample (with a seed) a subset with a desired size and move the remaining examples to the development split.
 
 
-## Getting Audioset dataset
+### Getting AudioSet dataset
 
 Make the script executable
 
@@ -83,7 +98,7 @@ chmod +x ./scripts/download_audioset.sh
 Download the audio files
 
 ```shell
-SPLIT='train_unbalanced' # or 'train_balanced' or 'eval'
+SPLIT='train_unbalanced' # run again with 'train_balanced' or 'eval'
 
 mkdir -p logs/download_audioset
 
@@ -96,9 +111,57 @@ mkdir -p logs/download_audioset
 (`sed` is there to delete output lines that just update the progress)
 
 
+### Getting AudioCaps dataset
 
-## Training
+TODO
 
-To try out the training notebook, go to `audiocap/train_whisper_supervised.py`
 
-During training, the loss, metrics and example predictions are logged to `wandb`.
+### Create a balanced AudioSet subset
+
+TODO
+
+
+### Create AudioSet small AudioFolder
+
+TODO
+
+### Create AudioCaps AudioFolder
+
+TODO
+
+
+## Pretraining 
+
+```shell
+CUDA_VISIBLE_DEVICES="..." python \
+    audiocap/train_whisper_supervised.py \
+    --checkpoint-dir-root="./checkpoints" \
+    --audioset-dir="./data/audioset_small/audiofolder" \
+    --audiocaps-dir="./data/audiocaps/audiofolder" \
+    --training-config="./configs/pretrain_1on1_large_config.yaml" \
+    --wandb-group="pretraining"
+```
+
+
+## Finetuning
+
+```shell
+CUDA_VISIBLE_DEVICES="..." python \
+    audiocap/train_whisper_supervised.py \
+    --checkpoint-dir-root="./checkpoints" \
+    --clotho-dir="./data/clotho_v2.1/audiofolder" \
+    --training-config="./configs/finetune_large_config.yaml" \
+    --wandb-group="finetuning"
+```
+
+## Licence
+
+For all code in this repository code, licence in LICENSE file applies.
+For the files in the `data` directory, specific licences apply: 
+
+- AudioSet labels: CC BY 4.0
+  - source of data: <https://research.google.com/audioset/>
+- AudioSet ontology: CC BY-SA 4.0
+  - source of data: <https://research.google.com/audioset/>
+- AudioCaps labels: MIT
+  - source of data: <https://github.com/cdjkim/audiocaps>
