@@ -35,8 +35,11 @@ with them in a systematic way. The following sections explain how to get the dat
 AudioFolder from them.
 
 
+### Clotho dataset
 
-### Getting the Clotho dataset
+<details>
+  <summary> Getting the data </summary>
+
 
 ```shell
 mkdir -p data/clotho_v2.1/audiofolder
@@ -67,7 +70,11 @@ audio-captioning/
 ...
 ```
 
-### Create Clotho AudioFolder
+</details>
+
+
+<details>
+  <summary> Creating AudioFolder </summary>
 
 Now, prepare 
 
@@ -86,8 +93,21 @@ python audiocap/prepare_audiofolder.py limit-clotho-split data/clotho_v2.1/audio
 
 This will sample (with a seed) a subset with a desired size and move the remaining examples to the development split.
 
+</details>
 
-### Getting AudioSet dataset
+
+### Pretraining data
+
+<details>
+  <summary> Getting AudioSet </summary>
+
+AudioSet is a large multi-label classification dataset. In our repository, we use information from
+AudioSet ontology to construct keyword-based synthetic captions. This makes it possible to pretrain a
+seq2seq captioning model (like Whisper) on AudioSet using an end-to-end supervised training pipeline.
+
+AudioSet annotations are copied into this repository, but audios must be scraped from youtube.
+You can use `scripts/download_audioset.sh` script that will use all cores to download and
+convert audios based on youtube ids.
 
 Make the script executable
 
@@ -103,34 +123,100 @@ SPLIT='train_unbalanced' # run again with 'train_balanced' or 'eval'
 mkdir -p logs/download_audioset
 
 ./scripts/download_audioset.sh \
-    "data/audioset/csvs/${SPLIT}.csv" \
-    "data/audioset/audios/${SPLIT}/" 2>&1 \
+    "data/audioset_full/csvs/${SPLIT}.csv" \
+    "data/audioset_full/audios/${SPLIT}/" 2>&1 \
     | tee >( sed 's/.*\r//' > "logs/download_audioset/${SPLIT}.txt" )
 ```
 
 (`sed` is there to delete output lines that just update the progress)
 
+Please note that scraping AudioSet is best-effort only. Videos could be deleted from youtube.
+Now, you should select a subset of AudioSet that suits your needs. AudioSet is heavily imbalanced,
+with music and speech ocurring in a vast majority of examples. In our case, we selected
+around 130k instances that covered as much of the underrepresented classes. However, before we
+select the subset, we prepare AudioCaps - a different dataset we use for pretraining. This is
+to prevent a leakage between the two datasets because they have audio files in common.
 
-### Getting AudioCaps dataset
-
-TODO
-
-
-### Create a balanced AudioSet subset
-
-TODO
-
-
-### Create AudioSet small AudioFolder
-
-TODO
-
-### Create AudioCaps AudioFolder
-
-TODO
+</details>
 
 
-## Pretraining 
+<details>
+  <summary> Getting AudioCaps </summary>
+
+AudioCaps is a captioning dataset with much more audios than Clotho (but is arguably of a lower quality).
+
+AudioCaps annotations are also part of this repository. Furthermore, AudioCaps is a subset of AudioSet,
+so you have all AudioCaps audios prepared once you download AudioSet.
+
+</details>
+
+
+<details>
+  <summary> Creating AudioCaps AudioFolder </summary>
+
+  Run:
+
+  ```shell
+    python audiocap/prepare_audiofolder.py prepare-audiocaps-audiofolder \
+    --audiocaps-path data/audiocaps \
+    --audioset-path data/audioset_full \
+    --audio-format mp3
+  ```
+
+  This will copy the files from AudioSet, and prepare AudioFolder structure
+  and annotations with dropped records about audios that were listed inside AudioCaps csvs
+  but files were missing (unavailable when you scraped AudioSet).
+
+</details>
+
+
+<details>
+  <summary> Create a balanced AudioSet subset </summary>
+
+  This part is most intricate. We want at the same time
+  - a diverse subset
+  - a balanced subset
+  - a large subset
+  - no leakeage with AudioCaps
+
+  This is difficult and has no optimal solution. Especially balancing a dataset is difficult when each example has multiple labels.
+  In this repository, there are some utilities help select it. If you want to select your own subset, you can look into `notebooks/select_audioset_subset.ipynb`
+
+  However, the subset we selected is also available in this repository in `data/audioset_small`.
+
+</details>
+
+
+<details>
+  <summary> Create AudioSet small AudioFolder </summary>
+
+    Run:
+
+  ```shell
+    python audiocap/prepare_audiofolder.py prepare-audioset-small-audiofolder \
+    --audioset-small-path data/audioset_small \
+    --audioset-full-path data/audioset_full \
+    --audio-format mp3
+  ```
+
+</details>
+
+Congrats. Now you have all three datasets prepared for training.
+
+
+### Checking corrupted audio files
+
+During training, corrupted audio files (not loadable by librosa) are skipped.
+However, if you want to check corrupted files, you can use the `audiocap.data.find_corrupted_audios`.
+
+
+## Training
+
+
+### Pretraining 
+
+We pretrain on a mixture of AudioCaps and AudioSet small.
+AudioSet labels are converted on the fly to keyword-based synthetic captions.
 
 ```shell
 CUDA_VISIBLE_DEVICES="..." python \
@@ -142,8 +228,13 @@ CUDA_VISIBLE_DEVICES="..." python \
     --wandb-group="pretraining"
 ```
 
+Argument `--training-config` is the most important - it specifies practically everything important about training.
+We experimented with different setups. you can find the different configs inside `configs/` folder.
 
-## Finetuning
+
+### Finetuning
+
+To run finetuning, use the following command:
 
 ```shell
 CUDA_VISIBLE_DEVICES="..." python \
@@ -153,6 +244,19 @@ CUDA_VISIBLE_DEVICES="..." python \
     --training-config="./configs/finetune_large_config.yaml" \
     --wandb-group="finetuning"
 ```
+
+TODO make it so that it can load a pretraing checkpoint from local file.
+
+
+## Evaluation
+
+TODO
+
+
+## Inference
+
+TODO
+
 
 ## Licence
 
