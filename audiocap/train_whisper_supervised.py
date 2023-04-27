@@ -61,7 +61,7 @@ def main(
     assert isinstance(config, transformers.WhisperConfig)
     model = get_whisper_model(architecture_name, config, use_pretrained_encoder, use_pretrained_decoder)
 
-    dataset, audiofolders, ds_val_references = audiocap.data.load_dataset_mixture(
+    dataset, audiofolders, ds_val_alternatives = audiocap.data.load_dataset_mixture(
         clotho_dir,
         audioset_dir,
         audiocaps_dir,
@@ -77,7 +77,7 @@ def main(
         for split_name, split in ds.items():
             print(f"{split.source_ds} {split_name}: {len(split)} audio-caption pairs")
 
-    compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_references)
+    compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_alternatives)
     collator = audiocap.data.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
 
     wandb.init(

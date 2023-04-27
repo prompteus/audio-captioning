@@ -276,25 +276,15 @@ class CaptioningMetrics:
     def __init__(
         self,
         tokenizer: transformers.PreTrainedTokenizer,
-        ds_references: dict[str, list[list[str]]],
+        ds_alternatives: dict[tuple[str, str], dict[str, list[str]]],
     ) -> None:
         self.sacrebleu = evaluate.load("sacrebleu")
         self.meteor = evaluate.load("meteor")
         self.spice = SpiceMetric()
         self.cider = CiderMetric()
         self.tokenizer = tokenizer
-        self.ds_references = ds_references
-        self.bounds = self.get_bounds(ds_references)
-        
-    def get_bounds(self, ds_references: dict[str, list[list[str]]]) -> dict[str, slice]:
-        bounds = [0]
-        for refs in ds_references.values():
-            bounds.append(bounds[-1] + len(refs))
-        return {
-            name: slice(s, e)
-            for name, (s, e)
-            in zip(ds_references.keys(), zip(bounds[:-1], bounds[1:]))
-        }
+        self.ds_alternatives = ds_alternatives
+        # ds_references is a dict[tuple[<dataset_name>, <task_name>], dict[<caption>, <list_of_alternatives>]]
         
     def decompose_output(self, output: str) -> tuple[str, str, str]:
         prefix, caption = output.split(": ", 1)
@@ -331,17 +321,19 @@ class CaptioningMetrics:
             f"model was not forced the correct task name {next((x, y) for x, y in zip(preds_task_names, task_names_all) if x != y)}"
 
         metrics_all = {}
-        
-        for ds_name in self.ds_references.keys():
-            references: list[list[str]] = self.ds_references[ds_name]
-            cutout = self.bounds[ds_name]
 
-            preds_str = preds_str_all[cutout]
-            trues_str = trues_str_all[cutout]
-            task_names = task_names_all[cutout]
+        for ds_name, task_name in self.ds_alternatives.keys():
+            alternatives: dict[str, list[str]] = self.ds_alternatives[(ds_name, task_name)]
+
+            indeces = [i for i, (d, t) in enumerate(zip(ds_names_all, task_names_all)) if d == ds_name and t == task_name]
+            preds_str = [preds_str_all[i] for i in indeces]
+            trues_str = [trues_str_all[i] for i in indeces]
             
-            if trues_str != [alternatives[0] for alternatives in references]:
-                raise ValueError("Expected labels: predicitons are different than expected.")
+            for caption in trues_str:
+                if caption not in alternatives:
+                    raise ValueError(f"caption '{caption}' not found in references for dataset '{ds_name}' and task '{task_name}'")
+            
+            references = [alternatives[caption] for caption in trues_str]
 
             sacrebleu_score = self.sacrebleu.compute(predictions=preds_str, references=references)
             meteor_score = self.meteor.compute(predictions=preds_str, references=references)
@@ -363,17 +355,18 @@ class CaptioningMetrics:
             pred_num_words = np.mean([len(pred.split()) for pred in preds_str])
             true_num_words = np.mean([len(true.split()) for true in trues_str])
 
+            task_prefix = "" if task_name == "caption" else f"{task_name}_"
             metrics_all.update({
-                f"{ds_name}/sacrebleu": sacrebleu_score['score'],
-                f"{ds_name}/meteor": meteor_score['meteor'],
-                f"{ds_name}/spice": spice_score['average_score'],
-                f"{ds_name}/cider": cider_score['score'],
-                f"{ds_name}/spider": spider_score,
-                f"{ds_name}/pred_num_words": float(pred_num_words),
-                f"{ds_name}/true_num_words": float(true_num_words),
+                f"{ds_name}/{task_prefix}sacrebleu": sacrebleu_score['score'],
+                f"{ds_name}/{task_prefix}meteor": meteor_score['meteor'],
+                f"{ds_name}/{task_prefix}spice": spice_score['average_score'],
+                f"{ds_name}/{task_prefix}cider": cider_score['score'],
+                f"{ds_name}/{task_prefix}spider": spider_score,
+                f"{ds_name}/{task_prefix}pred_num_words": float(pred_num_words),
+                f"{ds_name}/{task_prefix}true_num_words": float(true_num_words),
             })
 
-            if any("keyword" in task_name for task_name in task_names):
+            if task_name == "keywords":
                 keyword_metrics = keyword_metrics_batch(y_pred=preds_str, y_true=references)
                 metrics_all.update({
                     f"{ds_name}/{name}": value

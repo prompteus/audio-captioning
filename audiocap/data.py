@@ -5,6 +5,7 @@ import pathlib
 import functools
 import dataclasses
 import collections
+import multiprocessing
 from typing import Literal, Callable
 
 import librosa
@@ -110,7 +111,7 @@ class AudioFolder:
     handle_multiple_captions: Literal["explode", "keep_first"] | None = None
     prepare_caption: Callable | None = None
     shuffle_buffer_size: int = 100
-    prefetch: int = 50
+    prefetch: int = 20
     meta_filename: str = "metadata"
     drop_audio_array: bool = True
     sample_n: int | None = None
@@ -198,13 +199,19 @@ class AudioFolder:
         raise ValueError("Invalid value for `handle_multiple_captions`.")
     
     @functools.cached_property
-    def alternative_captions(self) -> list[list[str]]:
+    def alternative_captions(self) -> dict[str, list[str]]:
         if self.handle_multiple_captions == "explode":
             raise NotImplementedError("Cannot return alternative captions when `handle_multiple_captions` is set to `flatten`.")
         caps = self.meta[self.caption_columns]
         if self.prepare_caption is not None:
             caps = caps.applymap(self.prepare_caption)
-        return caps.values.tolist()
+        caps = caps.set_index(self.caption_columns[0], drop=False)
+        # this will drop values in case there are duplicates
+        return {
+            caption: alternatives
+            for caption, *alternatives in caps.itertuples()
+        }
+
     
 
 def load_clotho(
@@ -464,12 +471,12 @@ def load_dataset_mixture(
         dataset[split] = dp.map.Concater(*[af[split].pipe for af in audiofolders])
 
 
-    ds_val_references = {
-        af["val"].source_ds: af["val"].alternative_captions
+    ds_val_alternatives = {
+        (af["val"].source_ds, af["val"].task) : af["val"].alternative_captions
         for af in audiofolders
     }
 
-    return dataset, audiofolders, ds_val_references
+    return dataset, audiofolders, ds_val_alternatives
 
 
 
@@ -503,4 +510,20 @@ class DataCollatorAudioSeq2SeqWithPadding:
         batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
         batch["labels"] = labels
         return batch
+
+
+def find_corrupted_audios(folder: pathlib.Path, extension: str, num_workers: int) -> list[pathlib.Path]:
+    corrupted = []
+    with multiprocessing.Pool(num_workers) as pool:
+        files = list(folder.glob(f"**/*.{extension}"))
+        print("found total files:", len(files))
+        for path in files:
+            if path.is_file():
+                try:
+                    pool.apply_async(librosa.load, args=(path,), kwds={"sr": None})
+                except:
+                    corrupted.append(path)
+    print("found corrupted files:", len(corrupted))
+    return corrupted
+    
 
