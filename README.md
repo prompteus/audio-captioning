@@ -251,11 +251,11 @@ CUDA_VISIBLE_DEVICES="..." python \
     --checkpoint-dir-root="./checkpoints" \
     --clotho-dir="./data/clotho_v2.1/audiofolder" \
     --training-config="./configs/finetune_large_config.yaml" \
+    --load-checkpoint="..." \
     --wandb-group="finetuning"
 ```
 
-TODO make it so that it can load a pretraing checkpoint from local file.
-
+`--load-checkpoint` is an optional argument that allows initializing the model with weights from local file.
 
 
 ## Multitask training and inference

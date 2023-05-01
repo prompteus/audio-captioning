@@ -25,6 +25,7 @@ def main(
     audioset_dir: pathlib.Path = typer.Option(None, dir_okay=True, file_okay=False, readable=True, help="Path to the directory with the Audioset dataset"),
     audiocaps_dir: pathlib.Path = typer.Option(None, dir_okay=True, file_okay=False, readable=True, help="Path to the directory with the Audiocaps dataset"),
     training_config: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, readable=True, help="yaml file with the training config"),
+    load_checkpoint: Optional[pathlib.Path] = typer.Option(None, dir_okay=True, file_okay=True, readable=True, help="Path to checkpoint to initialize the model with"),
     wandb_group: Optional[str] = typer.Option(None, help="Wandb group"),
 ) -> None:
     
@@ -59,7 +60,7 @@ def main(
     tokenizer = transformers.WhisperTokenizer.from_pretrained(architecture_name, language="en", task="transcribe")
     feature_extractor = transformers.WhisperFeatureExtractor.from_pretrained(architecture_name)
     assert isinstance(config, transformers.WhisperConfig)
-    model = get_whisper_model(architecture_name, config, use_pretrained_encoder, use_pretrained_decoder)
+    model = get_whisper_model(architecture_name, config, load_checkpoint, use_pretrained_encoder, use_pretrained_decoder)
 
     dataset, audiofolders, ds_val_alternatives = audiocap.data.load_dataset_mixture(
         clotho_dir,
@@ -150,10 +151,16 @@ def main(
 def get_whisper_model(
     config_name: str,
     config: transformers.WhisperConfig,
+    load_checkpoint: pathlib.Path | None,
     use_pretrained_whisper_encoder: bool,
     use_pretrained_whisper_decoder: bool,
 ) -> audiocap.WhisperForAudioCaptioning:
     
+    if load_checkpoint is not None:
+        model = audiocap.WhisperForAudioCaptioning.from_pretrained(load_checkpoint)
+        assert isinstance(model, audiocap.WhisperForAudioCaptioning)
+        return model
+
     if use_pretrained_whisper_encoder and use_pretrained_whisper_decoder:
         model = audiocap.WhisperForAudioCaptioning.from_pretrained(config_name)
         assert isinstance(model, audiocap.WhisperForAudioCaptioning)
