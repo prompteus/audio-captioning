@@ -56,11 +56,22 @@ def main(
     dataset_weights = dataset_mix_config["weights"]
     datasets_val_limits = dataset_mix_config["limit_val_split"]
 
+    train_fc1_only = training_config_dict.get("train_fc1_only", False)
+
     config = transformers.WhisperConfig.from_pretrained(architecture_name)
     tokenizer = transformers.WhisperTokenizer.from_pretrained(architecture_name, language="en", task="transcribe")
     feature_extractor = transformers.WhisperFeatureExtractor.from_pretrained(architecture_name)
     assert isinstance(config, transformers.WhisperConfig)
     model = get_whisper_model(architecture_name, config, load_checkpoint, use_pretrained_encoder, use_pretrained_decoder)
+
+    if train_fc1_only:
+        for name, param in model.named_parameters():
+            if "fc1" not in name:
+                param.requires_grad = False
+
+    tuned_params = sum(p.shape.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.shape.numel() for p in model.parameters())
+    print(f"Number of trained parameters: {tuned_params}/{total_params} = {tuned_params/total_params*100:.2f}%")
 
     dataset, audiofolders, ds_val_alternatives = audiocap.data.load_dataset_mixture(
         clotho_dir,
@@ -81,11 +92,18 @@ def main(
     compute_metrics = audiocap.metrics.CaptioningMetrics(tokenizer, ds_val_alternatives)
     collator = audiocap.data.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor)
 
+    log_config_dict = {key: val for key, val in training_config_dict.items() if key != "hf_training_args"}
+    log_tags = ["supervised", architecture_name, f"trained_params_{tuned_params/total_params*100:.2f}%"]
+
+    if train_fc1_only:
+        log_tags.append("fc1_only")
+        log_config_dict["trained_params_percent"] = tuned_params / total_params
+
     wandb.init(
         project="audio-captioning",
-        tags=["supervised", architecture_name],
+        tags=log_tags,
         save_code=True,
-        config={key: val for key, val in training_config_dict.items() if key != "hf_training_args"},
+        config=log_config_dict,
         group=wandb_group,
     )
 

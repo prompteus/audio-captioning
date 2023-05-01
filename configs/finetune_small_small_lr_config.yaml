@@ -1,0 +1,64 @@
+hf_training_args:
+  do_train: True
+  do_eval: True
+
+  max_steps: 100_000
+  optim: "adamw_torch"
+  learning_rate: 0.000004
+  warmup_steps: 500
+
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  per_device_eval_batch_size: 1
+  eval_accumulation_steps: 8
+
+  dataloader_num_workers: 4
+  dataloader_pin_memory: True
+  dataloader_drop_last: False
+
+  logging_steps: 1
+  report_to: "wandb"
+  remove_unused_columns: False # NEVER TOUCH THIS
+
+  fp16: True
+
+  metric_for_best_model: "clotho/spider"
+  greater_is_better: True
+
+  load_best_model_at_end: True
+  predict_with_generate: True # NEVER TOUCH THIS
+  generation_num_beams: 1
+  generation_max_length: 80
+  evaluation_strategy: "steps"
+  eval_steps: 300
+
+  save_strategy: "steps"
+  save_steps: 300
+  save_total_limit: 5
+
+
+architecture:
+  name: "openai/whisper-small"
+  use_pretrained_whisper_encoder: True
+  use_pretrained_whisper_decoder: True
+
+early_stopping:
+  should_early_stop: False
+  early_stopping_patience: null
+  early_stopping_threshold: null
+
+logging:
+  log_preds_every_n_steps: 100
+  # these are per dataset
+  log_preds_num_train: 8
+  log_preds_num_valid: 32
+
+dataset_mix:
+  weights: 
+    clotho: 1.0
+    audioset: 0.0
+    audiocaps: 0.0
+  limit_val_split:
+    clotho: null
+    audioset: null
+    audiocaps: null
