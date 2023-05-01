@@ -110,8 +110,8 @@ class AudioFolder:
     feature_extractor: transformers.WhisperFeatureExtractor
     handle_multiple_captions: Literal["explode", "keep_first"] | None = None
     prepare_caption: Callable | None = None
-    shuffle_buffer_size: int = 100
-    prefetch: int = 32
+    shuffle_buffer_size: int = 20
+    prefetch: int = 10
     meta_filename: str = "metadata"
     drop_audio_array: bool = True
     sample_n: int | None = None
