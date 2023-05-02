@@ -1,0 +1,13 @@
+generate_args:
+  num_beams: 1
+  max_length: 80
+
+architecture:
+  name: "openai/whisper-large-v2"
+  use_pretrained_whisper_encoder: True
+  use_pretrained_whisper_decoder: True
+
+data:
+  dataset_name: "clotho"
+  task: "caption"
+  data_limit: null # (either a number or null)
