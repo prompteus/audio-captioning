@@ -20,6 +20,7 @@ hf_training_args:
   report_to: "wandb"
   remove_unused_columns: False # NEVER TOUCH THIS
 
+  # TODO check if this makes training faster (or use less memory) in our setup
   fp16: True
 
   metric_for_best_model: "audiocaps/spider"
@@ -56,7 +57,7 @@ logging:
 dataset_mix:
   weights: 
     clotho: 0.0
-    audioset: 3.0
+    audioset: 1.0
     audiocaps: 1.0
   limit_val_split:
     clotho: null
