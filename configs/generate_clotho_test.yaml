@@ -2,6 +2,9 @@ generate_args:
   num_beams: 1
   max_length: 80
 
+only_allowed_tokens: False
+batch_size: 2
+
 architecture:
   name: "openai/whisper-large-v2"
   use_pretrained_whisper_encoder: True
@@ -10,4 +13,5 @@ architecture:
 data:
   dataset_name: "clotho"
   task: "caption"
-  data_limit: null # (either a number or null)
+  dataset_type: "val"
+  data_limit: 4 # (either a number or null)te
