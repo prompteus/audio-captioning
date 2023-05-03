@@ -18,7 +18,7 @@ import transformers
 import audiocap
 
 
-def add_cols(colname: str | tuple[str, ...] | list[str], func: Callable) -> Callable:
+def set_cols(colname: str | tuple[str, ...] | list[str], func: Callable) -> Callable:
     def _func(row: dict):
         row = row.copy()
         if isinstance(colname, str):
@@ -110,6 +110,7 @@ class AudioFolder:
     feature_extractor: transformers.WhisperFeatureExtractor
     handle_multiple_captions: Literal["explode", "keep_first"] | None = None
     prepare_caption: Callable | None = None
+    augment_config: audiocap.augment.AugmentConfig | None = None
     shuffle_buffer_size: int = 20
     prefetch: int = 10
     meta_filename: str = "metadata"
@@ -120,6 +121,7 @@ class AudioFolder:
 
     meta: pd.DataFrame = dataclasses.field(init=False)
     pipe: dp.iter.IterDataPipe | dp.map.MapDataPipe = dataclasses.field(init=False)
+    augmenter: audiocap.augment.Augmenter | None = dataclasses.field(init=False)
 
     def __post_init__(self):
         if isinstance(self.path, str):
@@ -132,10 +134,18 @@ class AudioFolder:
             )
 
         self.meta = pd.read_json(self.path / f"{self.meta_filename}.jsonl", lines=True)
+
         if self.sample_n is not None:
             self.meta = self.meta.sample(n=self.sample_n, random_state=self.seed)
+        
         if self.shuffle:
             self.meta = self.meta.sample(frac=1, random_state=self.seed)
+
+        if self.augment_config is not None:
+            self.augmenter = audiocap.augment.Augmenter(self.augment_config)
+        else: 
+            self.augmenter = None
+
         self.init_pipe()
 
     def init_pipe(self):
@@ -150,12 +160,16 @@ class AudioFolder:
         pipe = (
             pipe
             .sharding_filter()
-            .map(add_cols("path", lambda row: self.path / row["file_name"]))
-            .map(add_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
+            .map(set_cols("path", lambda row: self.path / row["file_name"]))
+            .map(set_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
             .filter(lambda row: row["audio_array"] is not None)
-            .map(extract_features, ["audio_array", "sampling_rate"], "input_features")
-            .map(del_cols("path"))
         )
+
+        if self.augmenter is not None:
+            pipe = pipe.map(set_cols("audio_array", lambda row: self.augmenter(row["audio_array"], row["sampling_rate"])))
+
+        pipe = pipe.map(extract_features, ["audio_array", "sampling_rate"], "input_features")
+        pipe = pipe.map(del_cols("path"))
 
         if self.drop_audio_array:
             pipe = pipe.map(del_cols("audio_array"))
@@ -167,7 +181,7 @@ class AudioFolder:
             pipe = (
                 pipe
                 .map(rename_col({first_col: "caption"}))
-                .map(add_cols("caption_colname", lambda _: first_col))
+                .map(set_cols("caption_colname", lambda _: first_col))
                 .map(del_cols(rest_cols))
             )
 
@@ -179,8 +193,8 @@ class AudioFolder:
 
         pipe = (
             pipe
-            .map(add_cols("prefix", lambda _: prefix))
-            .map(add_cols(("labels", "forced_ac_decoder_ids"), lambda row: prepare_labels(prefix, row["caption"])))
+            .map(set_cols("prefix", lambda _: prefix))
+            .map(set_cols(("labels", "forced_ac_decoder_ids"), lambda row: prepare_labels(prefix, row["caption"])))
         )
 
         if self.load_as_iterable:
@@ -219,6 +233,7 @@ def load_clotho(
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
     limit_val_split: int | None,
+    augment_config: audiocap.augment.AugmentConfig,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -241,6 +256,7 @@ def load_clotho(
         path=audiofolder_root / "development",
         handle_multiple_captions="explode",
         shuffle=True,
+        augment_config=augment_config,
         **common_args,
     )
 
@@ -248,6 +264,7 @@ def load_clotho(
         path=audiofolder_root / "development",
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=augment_config,
         sample_n=train_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -259,6 +276,7 @@ def load_clotho(
         path=audiofolder_root / "validation",
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         sample_n=limit_val_split,
         seed=seed,
         **common_args,
@@ -268,6 +286,7 @@ def load_clotho(
         path=audiofolder_root / "validation",
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         sample_n=val_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -279,6 +298,7 @@ def load_clotho(
         path=audiofolder_root / "evaluation",
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         **common_args,
     )
 
@@ -290,6 +310,7 @@ def load_audioset(
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
     limit_val_split: int | None,
+    augment_config: audiocap.augment.AugmentConfig,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -314,12 +335,14 @@ def load_audioset(
     ds["train"] = AudioFolder(
         path=audiofolder_root / "train",
         shuffle=True,
+        augment_config=augment_config,
         **common_args,
     )
 
     ds["train_mini"] = AudioFolder(
         path=audiofolder_root / "train",
         shuffle=False,
+        augment_config=augment_config,
         sample_n=train_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -330,6 +353,7 @@ def load_audioset(
     ds["val"] = AudioFolder(
         path=audiofolder_root / "valid",
         shuffle=False,
+        augment_config=None,
         sample_n=limit_val_split,
         seed=seed,
         **common_args,
@@ -338,6 +362,7 @@ def load_audioset(
     ds["val_mini"] = AudioFolder(
         path=audiofolder_root / "valid",
         shuffle=False,
+        augment_config=None,
         sample_n=val_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -348,6 +373,7 @@ def load_audioset(
     ds["test"] = AudioFolder(
         path=audiofolder_root / "test",
         shuffle=False,
+        augment_config=None,
         **common_args,
     )
 
@@ -359,6 +385,7 @@ def load_audiocaps(
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
     limit_val_split: int | None,
+    augment_config: audiocap.augment.AugmentConfig,
     train_mini_size: int,
     val_mini_size: int,
     seed: int,
@@ -380,6 +407,7 @@ def load_audiocaps(
         path=audiofolder_root / "train",
         caption_columns=["caption"],
         shuffle=True,
+        augment_config=augment_config,
         **common_args,
     )
 
@@ -387,6 +415,7 @@ def load_audiocaps(
         path=audiofolder_root / "train",
         caption_columns=["caption"],
         shuffle=False,
+        augment_config=augment_config,
         sample_n=train_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -399,6 +428,7 @@ def load_audiocaps(
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         sample_n=limit_val_split,
         seed=seed,
         **common_args,
@@ -409,6 +439,7 @@ def load_audiocaps(
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         sample_n=val_mini_size,
         drop_audio_array=False,
         load_as_iterable=False,
@@ -421,6 +452,7 @@ def load_audiocaps(
         caption_columns=["caption_1", "caption_2", "caption_3", "caption_4", "caption_5"],
         handle_multiple_captions="keep_first",
         shuffle=False,
+        augment_config=None,
         **common_args,
     )
 
@@ -437,22 +469,23 @@ def load_dataset_mixture(
     log_preds_num_valid: int,
     tokenizer: transformers.WhisperTokenizer,
     feature_extractor: transformers.WhisperFeatureExtractor,
+    augment_config: audiocap.augment.AugmentConfig,
 ):
     audiofolders: list[dict[str, audiocap.data.AudioFolder]] = []
 
     if clotho_dir is not None and dataset_weights["clotho"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, datasets_val_limits["clotho"], log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_clotho(clotho_dir, tokenizer, feature_extractor, datasets_val_limits["clotho"], augment_config, log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if audioset_dir is not None and dataset_weights["audioset"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, datasets_val_limits["audioset"], log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_audioset(audioset_dir, tokenizer, feature_extractor, datasets_val_limits["audioset"], augment_config, log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if audiocaps_dir is not None and dataset_weights["audiocaps"] > 0.000001:
         audiofolders.append(
-            audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, datasets_val_limits["audiocaps"], log_preds_num_train, log_preds_num_valid, seed=0)
+            audiocap.data.load_audiocaps(audiocaps_dir, tokenizer, feature_extractor, datasets_val_limits["audiocaps"], augment_config, log_preds_num_train, log_preds_num_valid, seed=0)
         )
 
     if len(audiofolders) == 0:

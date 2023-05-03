@@ -14,6 +14,7 @@ import audiocap.metrics
 import audiocap.data
 import audiocap.callbacks
 import audiocap.models
+import audiocap.augment
 
 
 app = typer.Typer(pretty_exceptions_enable=False)
@@ -58,6 +59,12 @@ def main(
 
     train_fc1_only = training_config_dict.get("train_fc1_only", False)
 
+    if "augment" in training_config_dict:
+        augment_config = audiocap.augment.AugmentConfig(**training_config_dict["augment"])
+    else:
+        augment_config = None
+
+
     config = transformers.WhisperConfig.from_pretrained(architecture_name)
     tokenizer = transformers.WhisperTokenizer.from_pretrained(architecture_name, language="en", task="transcribe")
     feature_extractor = transformers.WhisperFeatureExtractor.from_pretrained(architecture_name)
@@ -83,6 +90,7 @@ def main(
         log_preds_num_valid,
         tokenizer,
         feature_extractor,
+        augment_config,
     )
 
     for ds in audiofolders:
