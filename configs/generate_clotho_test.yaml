@@ -13,5 +13,5 @@ architecture:
 data:
   dataset_name: "clotho"
   task: "caption"
-  dataset_type: "val"
-  data_limit: 4 # (either a number or null)te
+  dataset_type: "test"
+  data_limit: null # (either a number or null)

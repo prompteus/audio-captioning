@@ -486,9 +486,11 @@ class DataCollatorAudioSeq2SeqWithPadding:
         self,
         tokenizer: transformers.WhisperTokenizer,
         feature_extractor: transformers.WhisperFeatureExtractor,
+        keep_filename: bool = False,
     ) -> None:
         self.tokenizer = tokenizer
         self.feature_extractor = feature_extractor
+        self.keep_filename = keep_filename
 
     def __call__(
         self,
@@ -509,6 +511,9 @@ class DataCollatorAudioSeq2SeqWithPadding:
 
         batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
         batch["labels"] = labels
+        if self.keep_filename:
+            batch_filenames = [x["file_name"] for x in orig_batch]
+            batch["file_name"] = batch_filenames
         return batch
 
 
