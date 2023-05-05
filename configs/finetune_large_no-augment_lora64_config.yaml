@@ -4,7 +4,7 @@ hf_training_args:
 
   max_steps: 10_000
   optim: "adamw_torch"
-  learning_rate: 0.00004
+  learning_rate: 0.00002
   warmup_steps: 100
 
   per_device_train_batch_size: 1

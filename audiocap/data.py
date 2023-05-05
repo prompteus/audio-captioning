@@ -12,6 +12,7 @@ import librosa
 import pandas as pd
 import numpy as np
 import torch
+import torch.utils.data
 import torchdata.datapipes as dp
 import transformers
 
@@ -99,6 +100,12 @@ def librosa_load_safe(path: pathlib.Path, sr: int, mono: bool) -> tuple[np.ndarr
         return None, sr
 
 
+def create_prefix(source_ds: str, task: str) -> str:
+    return source_ds + " > " + task + ": "
+
+
+
+
 @dataclasses.dataclass
 class AudioFolder:
     path: pathlib.Path | str
@@ -152,7 +159,7 @@ class AudioFolder:
         prepare_labels = PrepareLabels(self.tokenizer)
         extract_features = PreprocessAudio(self.feature_extractor)
         sr = self.feature_extractor.sampling_rate
-        prefix = self.source_ds + " > " + self.task + ": "
+        prefix = create_prefix(self.source_ds, self.task)
 
         pipe: dp.iter.IterDataPipe
         pipe = dp.iter.IterableWrapper(self.meta.to_dict("records"), deepcopy=False) # type: ignore
@@ -226,6 +233,59 @@ class AudioFolder:
             for caption, *alternatives in caps.itertuples()
         }
 
+
+def load_audios_for_predition(
+    src: pathlib.Path | str,
+    tokenizer: transformers.WhisperTokenizer,
+    feature_extractor: transformers.WhisperFeatureExtractor,
+    source_ds: str,
+    task: str,
+    recursive: bool,
+    suffixes: tuple[str, ...] = ("mp3", "wav"),
+    take_n: int | None = None,
+    prefetch: int = 10,
+) -> tuple[dp.iter.IterDataPipe, int]:
+    
+    if source_ds not in ("clotho", "audioset", "audiocaps"):
+        raise ValueError(f"Unknown value for `source_ds`: {source_ds}")
+    if task not in ("caption", "keywords"):
+        raise ValueError(f"Unknown value for `task`: {task}")
+    
+    src = pathlib.Path(src)
+
+    if src.is_file():
+        paths = [src]
+    elif recursive:
+        paths = [path for path in src.glob("**/*") if path.is_file() and path.suffix in suffixes]
+    else:
+        paths = [path for path in src.iterdir() if path.is_file() and path.suffix.strip(".") in suffixes]
+    
+    paths.sort()
+    if take_n is not None:
+        paths = paths[:take_n]
+
+    num_files = len(paths)
+    
+    prepare_labels = PrepareLabels(tokenizer)
+    extract_features = PreprocessAudio(feature_extractor)
+    sr = feature_extractor.sampling_rate
+    prefix = create_prefix(source_ds, task)
+    _, forced_ac_decoder_ids = prepare_labels(prefix, "")
+
+    pipe: dp.iter.IterDataPipe
+    pipe = dp.iter.IterableWrapper([{"path": path} for path in paths], deepcopy=False)
+    pipe = (pipe
+        .sharding_filter()
+        .map(set_cols("file_name", lambda x: pathlib.Path(x["path"]).name))
+        .map(set_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
+        .map(del_cols("path"))
+        .filter(lambda row: row["audio_array"] is not None)
+        .map(extract_features, ["audio_array", "sampling_rate"], "input_features")
+        .map(set_cols("forced_ac_decoder_ids", lambda _: forced_ac_decoder_ids))
+        .prefetch(prefetch)
+    )
+
+    return pipe, num_files
     
 
 def load_clotho(
@@ -512,16 +572,17 @@ def load_dataset_mixture(
     return dataset, audiofolders, ds_val_alternatives
 
 
-
 class DataCollatorAudioSeq2SeqWithPadding:
 
     def __init__(
         self,
         tokenizer: transformers.WhisperTokenizer,
         feature_extractor: transformers.WhisperFeatureExtractor,
+        keep_cols: tuple[str, ...] = tuple(),
     ) -> None:
         self.tokenizer = tokenizer
         self.feature_extractor = feature_extractor
+        self.keep_cols = keep_cols
 
     def __call__(
         self,
@@ -529,19 +590,23 @@ class DataCollatorAudioSeq2SeqWithPadding:
     ) -> collections.UserDict:
         
         batch_features = [{"input_features": x["input_features"]} for x in orig_batch]
-        batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
         batch_forced_ac_decoder_ids = [x["forced_ac_decoder_ids"] for x in orig_batch]
 
         batch = self.feature_extractor.pad(batch_features, return_tensors="pt")
-        batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
-        # replace padding with -100 to ignore loss correctly
-        labels = batch_labels["input_ids"].masked_fill(batch_labels.attention_mask != 1, -100)
-
-        if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
-            labels = labels[:, 1:]
-
         batch["forced_ac_decoder_ids"] = torch.tensor(batch_forced_ac_decoder_ids)
-        batch["labels"] = labels
+
+        if "labels" in orig_batch[0]:
+            batch_labels = [{"input_ids": x["labels"]} for x in orig_batch]
+            batch_labels = self.tokenizer.pad(batch_labels, return_tensors="pt")
+            # replace padding with -100 to ignore loss correctly
+            labels = batch_labels["input_ids"].masked_fill(batch_labels.attention_mask != 1, -100)
+            if (labels[:, 0] == self.tokenizer.bos_token_id).all().cpu().item():
+                labels = labels[:, 1:]
+            batch["labels"] = labels
+
+        for col in self.keep_cols:
+            batch[col] = torch.utils.data.default_collate([x[col] for x in orig_batch])
+
         return batch
 
 
@@ -559,5 +624,4 @@ def find_corrupted_audios(folder: pathlib.Path | str, extension: str, num_worker
                     corrupted.append(path)
     print("found corrupted files:", len(corrupted))
     return corrupted
-    
 
