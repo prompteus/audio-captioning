@@ -8,6 +8,7 @@ import wandb
 import torch 
 import typer
 import yaml
+import peft
 import torchdata.datapipes as dp
 
 import audiocap.metrics
@@ -58,18 +59,26 @@ def main(
     datasets_val_limits = dataset_mix_config["limit_val_split"]
 
     train_fc1_only = training_config_dict.get("train_fc1_only", False)
+    train_using_lora = training_config_dict.get("lora_config", None) is not None
+    lora_config_dict = training_config_dict.get("lora_config", {})
 
     if "augment" in training_config_dict:
         augment_config = audiocap.augment.AugmentConfig(**training_config_dict["augment"])
     else:
         augment_config = None
 
-
     config = transformers.WhisperConfig.from_pretrained(architecture_name)
     tokenizer = transformers.WhisperTokenizer.from_pretrained(architecture_name, language="en", task="transcribe")
     feature_extractor = transformers.WhisperFeatureExtractor.from_pretrained(architecture_name)
     assert isinstance(config, transformers.WhisperConfig)
     model = get_whisper_model(architecture_name, config, load_checkpoint, use_pretrained_encoder, use_pretrained_decoder)
+
+    if train_using_lora:
+        lora_config = peft.LoraConfig(
+            inference_mode=False,
+            **lora_config_dict,
+        )
+        model = peft.get_peft_model(model, lora_config)
 
     if train_fc1_only:
         for name, param in model.named_parameters():
@@ -106,6 +115,8 @@ def main(
     if train_fc1_only:
         log_tags.append("fc1_only")
         log_config_dict["trained_params_percent"] = tuned_params / total_params
+    if train_using_lora:
+        log_tags.append("lora")
 
     wandb.init(
         project="audio-captioning",

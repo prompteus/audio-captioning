@@ -28,3 +28,4 @@ yt-dlp==2023.3.4
 plotly==5.14.1
 wordcloud==1.8.2.2 
 scikit-image==0.20.0
+peft==0.3.0
