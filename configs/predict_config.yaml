@@ -1,0 +1,19 @@
+architecture:
+  name: "openai/whisper-large-v2"
+
+runtime:
+  use_fp16: True
+  device: "cuda"
+
+dataloader:
+  batch_size: 2
+  num_workers: 4
+  pin_memory: True
+
+generate:
+  max_length: 80
+  num_beams: 5
+  
+dataset:
+  source_ds: "clotho"
+  task: "caption"
