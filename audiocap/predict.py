@@ -1,6 +1,10 @@
+import os
+import sys
 import math
 import pathlib
+import json
 import csv
+import time
 
 import torch
 import torch.utils.data
@@ -23,6 +27,9 @@ def main(
     config_file: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, exists=True, readable=True, help="config_file"),
     take_first_n: int = typer.Option(None, help="Take only the first n files (for debugging)"),
 ) -> None:
+
+    for i in range(torch.cuda.device_count()):
+        print(i, torch.cuda.get_device_properties(i))
 
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
@@ -67,6 +74,25 @@ def main(
     collator = audiocap.data.DataCollatorAudioSeq2SeqWithPadding(tokenizer, feature_extractor, keep_cols=("file_name",))
     loader = torch.utils.data.DataLoader(ds, **dataloader_config, collate_fn=collator, drop_last=False, shuffle=False)
 
+    log_file = output_file.parent / (output_file.stem + '_log.json')
+    log_dict = {
+        "checkpoint": checkpoint,
+        "data": str(data),
+        "output_file": str(output_file),
+        "recursive": recursive,
+        "config_file": str(config_file),
+        "take_first_n": take_first_n,
+        "num_files": num_files,
+        "config": config,
+        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES", None),
+        "command": " ".join(sys.argv),
+    }
+
+    with open(log_file, "w", encoding="utf-8") as f:
+        json.dump(log_dict, f, indent=2, ensure_ascii=False)
+
+    start_time = time.time()
+
     with torch.no_grad():
         for b, batch in enumerate(loader):
             print("-" * 40)
@@ -83,10 +109,15 @@ def main(
             for file_name, pred_raw in zip(batch["file_name"], preds_raw):
                 print("FILE:", file_name)
                 print("PRED:", pred_raw)
+                print()
                     
             df = pd.DataFrame({"file_name": batch["file_name"], "caption_predicted": preds})
             df.to_csv(output_file, mode='a', header=not output_file.exists(), index=False, encoding="utf-8", quoting=csv.QUOTE_NONNUMERIC)
 
+    log_dict["wall_time"] = time.time() - start_time
+
+    with open(log_file, "w", encoding="utf-8") as f:
+        json.dump(log_dict, f, indent=2, ensure_ascii=False)
 
 if __name__ == "__main__":
     app()
