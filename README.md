@@ -272,6 +272,27 @@ forced to the decoder, which makes the model generate output in a desired style.
 inspired by multilingual generative language models where the prefix specifies the output language.
 
 
+## Inference
+
+If you have a trained model, you can run the inference script:
+
+```shell
+CUDA_VISIBLE_DEVICES="..." python \
+  audiocap/predict.py \
+  --checkpoint path/to_checkpoint \
+  --data path/to/folder/with/audio/files \
+  --output-file foo.csv \
+  --config-file configs/predict_config.yaml \
+  --take-first-n 10 # optional, for debugging purposes
+```
+
+The inference script will generate outputs using the model, print raw outputs into stdout and
+clean outputs into a csv file with two columns, `file_name` and `caption_predicted`.
+Raw outputs include invisible tokens such as `<|startoftranscript|>`, forced prefix, padding, etc. Clean outputs only contain the content.
+
+Config file specifies both inference hyperparameters (like number of beams) and technical necessities,
+such as batch size, fp precision or number of loader processes.
+
 ## Licence
 
 For all code in this repository code, licence in LICENSE file applies.
