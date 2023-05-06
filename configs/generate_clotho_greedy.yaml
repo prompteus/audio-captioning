@@ -1,9 +1,10 @@
 generate_args:
   num_beams: 1
+  do_sample: False
   max_length: 80
 
 batch_size: 2
 
 data:
   dataset_name: "clotho"
-  data_limit: 4 # (either a number or null)
+  data_limit: null # (either a number or null)

@@ -1,0 +1,10 @@
+predictions file: ../inference_outputs/stoic-totem-29_clotho_test_1683134581.jsonl
+                    ground truth file: ../data/clotho_v2.1/clotho_captions_evaluation.csv
+                    ###### COMPUTED METRICS ######
+                    sacrebleu: {'score': 4.795215846081734, 'counts': [1263, 310, 85, 21], 'totals': [2640, 2240, 1840, 1441], 'precisions': [47.84090909090909, 13.839285714285714, 4.619565217391305, 1.457321304649549], 'bp': 0.5868684760785086, 'sys_len': 2640, 'ref_len': 4047}
+                    meteor: {'meteor': 0.19757878050841324}
+                    spice: 0.07860903904692186
+                    cider: 0.19370149780562934
+                    spider: 0.1361552684262756
+
+
