@@ -31,5 +31,16 @@
   },
   "cuda_visible_devices": "0",
   "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/dainty-yogurt-57/checkpoint-2600 --data ../../maratmp/audio-captioning/data//clotho_v2.1/audiofolder/validation --output-file ../inference_outputs/dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_config.csv --config-file ../configs/predict_clotho_beam_multinomial5_config.yaml",
-  "wall_time": 94.878488779068
+  "wall_time": 98.15619802474976,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_config.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1/clotho_captions_validation.csv",
+    "computed metrics": {
+      "sacrebleu": 15.624353553305983,
+      "meteor": 0.3729552066781595,
+      "spice": 0.13305310238203666,
+      "cider": 0.4415634650784685,
+      "spider": 0.2873082837302526
+    }
+  }
 }

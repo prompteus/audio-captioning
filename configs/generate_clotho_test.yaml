@@ -1,9 +1,0 @@
-generate_args:
-  num_beams: 1
-  max_length: 80
-
-batch_size: 2
-
-data:
-  dataset_name: "clotho"
-  data_limit: 4 # (either a number or null)

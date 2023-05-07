@@ -5,6 +5,7 @@ from audiocap.metrics import CiderMetric, SpiceMetric, CocoTokenizer
 import evaluate
 import pathlib
 import typer
+import json
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -12,18 +13,14 @@ app = typer.Typer(pretty_exceptions_enable=False)
 def main(
     predictions_path: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, readable=True, help="Path to the jsonl file with caption predictions"),
     labels_path: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, readable=True, help="file with the ground truth captions"),
-    save_stats_path: pathlib.Path = typer.Option(..., dir_okay=False, file_okay=True, readable=True, help="file where to save the metrics stats"),
 ) -> None:
     
     print(">>>>>> COMPUTING METRICS <<<<<<")
     
     # load predictions and gt
-    df_preds = pd.read_json(predictions_path, lines=True)
+    df_preds = pd.read_csv(predictions_path, sep=",")
     df_labels = pd.read_csv(labels_path)
-
-    # cut prefixes
-    df_preds["clean_pred"] = df_preds["caption"].apply(lambda x: x.split(": ")[1].split("<|endoftext|>")[0])
-
+    
     # join predictions and labels
     df = df_preds.merge(df_labels, on="file_name")
 
@@ -37,7 +34,7 @@ def main(
     spice = SpiceMetric()
     cider = CiderMetric()
 
-    preds_str = df["clean_pred"].tolist()
+    preds_str = df["caption_predicted"].tolist()
     references = df["all_labels"].tolist()
     # compute metrics
     sacrebleu_score = sacrebleu.compute(predictions=preds_str, references=references)
@@ -50,19 +47,37 @@ def main(
     cider_score = cider.compute(predictions=preds_str, references=references, tokens=tokens)
     spider_score = 0.5 * (spice_score['average_score'] + cider_score['score'])
 
-    output_str = f"predictions file: {predictions_path}\n" + \
-                  "ground truth file: {labels_path}\n" + \
-                  "###### COMPUTED METRICS ######\n" + \
-                  "sacrebleu: {sacrebleu_score}\n" +  \
-                  "meteor: {meteor_score}\n" + \
-                  "spice: {spice_score['average_score']}\n" + \
-                  "cider: {cider_score['score']}\n" + \
-                  "spider: {spider_score}\n\n\n"
+    output_dict = {"metric_computation": {
+                        "predictions file": str(predictions_path),
+                        "ground truth file": str(labels_path),
+                        "computed metrics": {
+                            "sacrebleu": sacrebleu_score["score"],
+                            "meteor": meteor_score["meteor"],
+                            "spice": spice_score['average_score'],
+                            "cider": cider_score['score'],
+                            "spider": spider_score
+                        }
+                    }
+                  }
+    print(json.dumps(output_dict, indent=4, sort_keys=False))
 
-    print(output_str)
-    with open(save_stats_path, "a") as f:
-        f.write(output_str)
+    log_file = predictions_path.parent / (predictions_path.stem + '_log.json')
+    with open(log_file, "r+") as f:
+        try:
+            log_dict = json.load(f)
+            log_dict["metric_computation"] = output_dict["metric_computation"]
+        except json.decoder.JSONDecodeError:
+            print("No log_file => Creating new log file")
+            log_dict = output_dict
 
+    with open(log_file, "w") as f:
+        json.dump(log_dict, open(log_file, "w"), indent=2, ensure_ascii=False)
+    with open(log_file.parent / "all_spiders", "a") as f:
+        f.write(str(predictions_path.stem) 
+                + ":" 
+                + " " * (80 - len(str(predictions_path.stem))) 
+                + f"{spider_score:.4f}"
+                + "\n")
 
 if __name__ == "__main__":
     app()

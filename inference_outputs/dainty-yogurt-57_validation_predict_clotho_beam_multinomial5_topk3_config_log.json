@@ -1,0 +1,47 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/dainty-yogurt-57/checkpoint-2600",
+  "data": "../../maratmp/audio-captioning/data/clotho_v2.1/audiofolder/validation",
+  "output_file": "../inference_outputs/dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_topk3_config.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_clotho_beam_multinomial5_topk3_config.yaml",
+  "take_first_n": null,
+  "num_files": 200,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 5,
+      "do_sample": true,
+      "top_k": 3,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "clotho",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "1",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/dainty-yogurt-57/checkpoint-2600 --data ../../maratmp/audio-captioning/data//clotho_v2.1/audiofolder/validation --output-file ../inference_outputs/dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_topk3_config.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_multinomial5_topk3_config.yaml",
+  "wall_time": 88.50043487548828,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_topk3_config.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1/clotho_captions_validation.csv",
+    "computed metrics": {
+      "sacrebleu": 15.827146533964582,
+      "meteor": 0.3728866000809781,
+      "spice": 0.1296469825015022,
+      "cider": 0.4502959531703905,
+      "spider": 0.28997146783594635
+    }
+  }
+}
