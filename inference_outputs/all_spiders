@@ -1,8 +1,10 @@
 dainty-yogurt-57_validation_predict_clotho_greedy_config:                        0.2688
+
 dainty-yogurt-57_validation_predict_clotho_beam_diverse_5_5_config:              0.2704
 dainty-yogurt-57_validation_predict_clotho_beam_diverse_10_5_config:             0.2878
 dainty-yogurt-57_validation_predict_clotho_beam_diverse_10_10_config:            0.2690
 dainty-yogurt-57_validation_predict_clotho_beam_diverse_30_10_config:            0.2873
+
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial3_topk3_config:       0.2877
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_config:             0.2873
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_topk3_config:       0.2900
@@ -13,13 +15,30 @@ dainty-yogurt-57_validation_predict_clotho_beam_multinomial10_topk3_config:     
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial10_topk5_config:      0.2913
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial15_config:            0.2629
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial30_config:            0.2787
+
 dainty-yogurt-57_validation_predict_clotho_contrastive_search_06_4_config:       0.2027
 dainty-yogurt-57_validation_predict_clotho_contrastive_search_02_10_config:      0.2684
 dainty-yogurt-57_validation_predict_clotho_contrastive_search_04_10_config:      0.2402
 dainty-yogurt-57_validation_predict_clotho_contrastive_search_06_10_config:      0.1543
+
 dainty-yogurt-57_validation_predict_clotho_sample_topk5_config:                  0.1954
 dainty-yogurt-57_validation_predict_clotho_sample_topk10_config:                 0.1650
 dainty-yogurt-57_validation_predict_clotho_sample_topk15_config:                 0.1419
+
+dainty-yogurt-57_validation_predict_clotho_beam_classic3_config:                 0.2871
+dainty-yogurt-57_validation_predict_clotho_beam_classic5_config:                 0.2791
+dainty-yogurt-57_validation_predict_clotho_beam_classic8_config:                 0.2849
+dainty-yogurt-57_validation_predict_clotho_beam_classic9_config:                 0.2889
+dainty-yogurt-57_validation_predict_clotho_beam_classic10_config:                0.2939
+dainty-yogurt-57_validation_predict_clotho_beam_classic11_config:                0.2948
+dainty-yogurt-57_validation_predict_clotho_beam_classic12_config:                0.2949
+dainty-yogurt-57_validation_predict_clotho_beam_classic13_config:                0.2931
+dainty-yogurt-57_validation_predict_clotho_beam_classic14_config:                0.2931
+dainty-yogurt-57_validation_predict_clotho_beam_classic20_config:                0.2900
+dainty-yogurt-57_validation_predict_clotho_beam_classic50_config:                0.2776
+
+
+
 
 2nd try
 dainty-yogurt-57_validation_predict_clotho_beam_diverse_30_10_2ndTRY_config:     0.2873
@@ -27,3 +46,11 @@ dainty-yogurt-57_validation_predict_clotho_beam_diverse_10_5_2ndTRY_config:     
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial5_2ndTRY_config:      0.2849
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial10_2ndTRY_config:     0.2820
 dainty-yogurt-57_validation_predict_clotho_beam_multinomial10_topk3_config:      0.2867
+
+Experiments:
+dainty-yogurt-57_validation_predict_clotho_beam_classic12_AC_caption_config:     0.2464
+dainty-yogurt-57_validation_predict_clotho_beam_classic12_AS_keywords_config:    0.0455
+
+Evaluation:
+
+dainty-yogurt-57_evaluation_predict_clotho_beam_classic12_config:                0.2815
