@@ -203,21 +203,18 @@ def get_whisper_model(
         assert isinstance(model, audiocap.WhisperForAudioCaptioning)
         return model
     
-    if not use_pretrained_whisper_encoder and not use_pretrained_whisper_decoder:
-        return audiocap.WhisperForAudioCaptioning(config)
-    
     model_pretrained = audiocap.WhisperForAudioCaptioning.from_pretrained(config_name)
     assert isinstance(model_pretrained, audiocap.WhisperForAudioCaptioning)
     model = audiocap.WhisperForAudioCaptioning(config)
 
-    if use_pretrained_whisper_encoder:
-        model.model.encoder = model_pretrained.get_encoder()
+    if not use_pretrained_whisper_encoder:
+        model_pretrained.model.encoder = model.get_encoder()
 
-    if use_pretrained_whisper_decoder:
-        model.model.decoder = model_pretrained.get_decoder()
+    if not use_pretrained_whisper_decoder:
+        model_pretrained.model.decoder = model.get_decoder()
     
-    del model_pretrained
-    return model
+    del model
+    return model_pretrained
 
 
 if __name__ == "__main__":
