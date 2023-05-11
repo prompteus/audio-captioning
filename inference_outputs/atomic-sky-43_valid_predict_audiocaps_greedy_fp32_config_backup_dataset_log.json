@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/atomic-sky-43/checkpoint-13500",
+  "data": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid",
+  "output_file": "../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_fp32_config_backup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_audiocaps_greedy_fp32_config.yaml",
+  "take_first_n": null,
+  "num_files": 448,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": false,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 1,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "audiocaps",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/atomic-sky-43/checkpoint-13500 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_fp32_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_fp32_config.yaml",
+  "wall_time": 271.78171157836914,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_fp32_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 20.24615266989919,
+      "meteor": 0.48630120154842243,
+      "spice": 0.17567646699360764,
+      "cider": 0.6972022830254943,
+      "spider": 0.43643937500955093
+    }
+  }
+}

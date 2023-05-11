@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/faithful-plant-41/checkpoint-3900",
+  "data": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid",
+  "output_file": "../inference_outputs/faithful-plant-41_valid_predict_audiocaps_greedy_config.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "take_first_n": null,
+  "num_files": 448,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 1,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "audiocaps",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/faithful-plant-41/checkpoint-3900 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/faithful-plant-41_valid_predict_audiocaps_greedy_config.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "wall_time": 57.38881707191467,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/faithful-plant-41_valid_predict_audiocaps_greedy_config.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 22.807090331919024,
+      "meteor": 0.5127228729571489,
+      "spice": 0.18661263581215945,
+      "cider": 0.7115656819667793,
+      "spider": 0.4490891588894694
+    }
+  }
+}

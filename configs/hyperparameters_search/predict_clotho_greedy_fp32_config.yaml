@@ -2,7 +2,7 @@ architecture:
   name: "openai/whisper-large-v2"
 
 runtime:
-  use_fp16: False
+  use_fp16: True
   device: "cuda"
 
 dataloader:
@@ -11,7 +11,7 @@ dataloader:
   pin_memory: True
 
 generate:
-  num_beams: 13
+  num_beams: 1
   do_sample: False
   max_length: 80
   

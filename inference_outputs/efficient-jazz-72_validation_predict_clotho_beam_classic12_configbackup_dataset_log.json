@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../checkpoints/efficient-jazz-72/checkpoint-1000",
+  "data": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/validation",
+  "output_file": "../inference_outputs/efficient-jazz-72_validation_predict_clotho_beam_classic12_configbackup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_clotho_beam_classic12_config.yaml",
+  "take_first_n": null,
+  "num_files": 1045,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 1,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 12,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "clotho",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../checkpoints/efficient-jazz-72/checkpoint-1000 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/validation --output-file ../inference_outputs/efficient-jazz-72_validation_predict_clotho_beam_classic12_configbackup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic12_config.yaml",
+  "wall_time": 1348.9430313110352,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/efficient-jazz-72_validation_predict_clotho_beam_classic12_configbackup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/clotho_captions_validation.csv",
+    "computed metrics": {
+      "sacrebleu": 14.512900004484887,
+      "meteor": 0.35831297037847015,
+      "spice": 0.11765009943810134,
+      "cider": 0.39917823379184897,
+      "spider": 0.2584141666149752
+    }
+  }
+}
