@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78_backup/checkpoint-2100",
+  "data": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/test",
+  "output_file": "../inference_outputs/ethereal-sponge-78_backup_test_predict_audiocaps_greedy_config_backup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "take_first_n": null,
+  "num_files": 886,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 1,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "audiocaps",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78_backup/checkpoint-2100 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/test --output-file ../inference_outputs/ethereal-sponge-78_backup_test_predict_audiocaps_greedy_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "wall_time": 191.9555675983429,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/ethereal-sponge-78_backup_test_predict_audiocaps_greedy_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/test/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 23.396526690319686,
+      "meteor": 0.4788425108163992,
+      "spice": 0.17378143674709173,
+      "cider": 0.6598748058934311,
+      "spider": 0.41682812132026137
+    }
+  }
+}

@@ -8,7 +8,7 @@ do
     DATASET=audiocaps # clotho_v2.1
     RUN_NAME=ethereal-sponge-78_backup # magic-mountain-74 # rose-lake-75 # atomic-sky-43 # magic-mountain-74 # efficient-jazz-72 # dainty-yogurt-57 # mythical-trooper-62 (lora?)
     CHECKPOINT=2100 # 5000 # 1000 # 13500 # 6200  # 1000 # 2600
-    SPLIT=valid
+    SPLIT=test
     OUT_FILE_NAME=${RUN_NAME}_${SPLIT}_${CONFIG_FILE_NAME}${ADDITIONAL_INFO}
 
     CUDA_VISIBLE_DEVICES=3 python \

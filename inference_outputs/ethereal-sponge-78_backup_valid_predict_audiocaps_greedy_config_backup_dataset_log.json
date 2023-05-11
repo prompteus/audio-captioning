@@ -30,5 +30,17 @@
     }
   },
   "cuda_visible_devices": "3",
-  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78_backup/checkpoint-2100 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/ethereal-sponge-78_backup_valid_predict_audiocaps_greedy_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml"
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78_backup/checkpoint-2100 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/ethereal-sponge-78_backup_valid_predict_audiocaps_greedy_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "wall_time": 102.18591213226318,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/ethereal-sponge-78_backup_valid_predict_audiocaps_greedy_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 25.72934696948535,
+      "meteor": 0.5288544983533929,
+      "spice": 0.20164951625551839,
+      "cider": 0.8754223747407597,
+      "spider": 0.538535945498139
+    }
+  }
 }
