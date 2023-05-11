@@ -1,4 +1,3 @@
-
 # imports
 import pandas as pd
 from audiocap.metrics import CiderMetric, SpiceMetric, CocoTokenizer
@@ -16,10 +15,15 @@ def main(
 ) -> None:
     
     print(">>>>>> COMPUTING METRICS <<<<<<")
-    
     # load predictions and gt
     df_preds = pd.read_csv(predictions_path, sep=",")
-    df_labels = pd.read_csv(labels_path)
+
+    if labels_path.suffix == ".csv":
+        df_labels = pd.read_csv(labels_path)
+    elif labels_path.suffix == ".jsonl":
+        df_labels = pd.read_json(labels_path, lines=True)
+    else:
+        raise ValueError(f"labels_path must be a csv or jsonl file, got {labels_path.suffix}")
     
     # join predictions and labels
     df = df_preds.merge(df_labels, on="file_name")

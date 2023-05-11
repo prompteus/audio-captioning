@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/dainty-yogurt-57/checkpoint-2600",
+  "data": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid",
+  "output_file": "../inference_outputs/dainty-yogurt-57_valid_predict_audiocaps_beam_classic12_config.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_audiocaps_beam_classic12_config.yaml",
+  "take_first_n": null,
+  "num_files": 448,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 12,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "audiocaps",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/dainty-yogurt-57/checkpoint-2600 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/dainty-yogurt-57_valid_predict_audiocaps_beam_classic12_config.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_beam_classic12_config.yaml",
+  "wall_time": 1176.035388469696,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/dainty-yogurt-57_valid_predict_audiocaps_beam_classic12_config.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 18.690171413754527,
+      "meteor": 0.48387490147550405,
+      "spice": 0.17558692112527538,
+      "cider": 0.6673823577760561,
+      "spider": 0.4214846394506658
+    }
+  }
+}

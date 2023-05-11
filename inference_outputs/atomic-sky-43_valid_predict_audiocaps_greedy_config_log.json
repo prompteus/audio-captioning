@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/atomic-sky-43/checkpoint-13500",
+  "data": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid",
+  "output_file": "../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_config.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "take_first_n": null,
+  "num_files": 448,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": true,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 1,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "audiocaps",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "3",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/atomic-sky-43/checkpoint-13500 --data ../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid --output-file ../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_config.csv --config-file ../configs/hyperparameters_search/predict_audiocaps_greedy_config.yaml",
+  "wall_time": 128.75901055335999,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/atomic-sky-43_valid_predict_audiocaps_greedy_config.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/audiocaps/audiofolder/valid/metadata.jsonl",
+    "computed metrics": {
+      "sacrebleu": 19.913010143032782,
+      "meteor": 0.4864861713624678,
+      "spice": 0.1756573343405464,
+      "cider": 0.6928206130979685,
+      "spider": 0.43423897371925746
+    }
+  }
+}
