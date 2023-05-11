@@ -108,7 +108,6 @@ def main(
 
         for name, param in model.get_decoder().named_parameters(): # type: ignore
             if "encoder_attn" in name or "self_attn" in name or "fc1" in name:
-                print(name)
                 param.requires_grad = True
 
 
