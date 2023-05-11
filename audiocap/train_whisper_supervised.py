@@ -61,6 +61,10 @@ def main(
     train_fc1_only = training_config_dict.get("train_fc1_only", False)
     train_using_lora = training_config_dict.get("lora_config", None) is not None
     lora_config_dict = training_config_dict.get("lora_config", {})
+    clever_freeze = training_config_dict.get("clever_freeze", False)
+
+    if train_fc1_only and clever_freeze:
+        raise ValueError("Cannot train fc1 only and use clever freeze at the same time")
 
     if "augment" in training_config_dict:
         augment_config = audiocap.augment.AugmentConfig(**training_config_dict["augment"])
@@ -84,6 +88,29 @@ def main(
         for name, param in model.named_parameters():
             if "fc1" not in name:
                 param.requires_grad = False
+
+    if clever_freeze:
+        for param in model.parameters():
+            param.requires_grad = False
+
+        for name, param in model.named_parameters():
+            if "bias" in name:
+                param.requires_grad = True
+
+        for name, layer in model.named_modules():
+            if isinstance(layer, torch.nn.Conv1d):
+                for param in layer.parameters():
+                    param.requires_grad = True
+
+        for name, param in model.get_encoder().named_parameters(): # type: ignore
+            if "fc1" in name:
+                param.requires_grad = True
+
+        for name, param in model.get_decoder().named_parameters(): # type: ignore
+            if "encoder_attn" in name or "self_attn" in name or "fc1" in name:
+                print(name)
+                param.requires_grad = True
+
 
     tuned_params = sum(p.shape.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.shape.numel() for p in model.parameters())
@@ -117,6 +144,8 @@ def main(
         log_config_dict["trained_params_percent"] = tuned_params / total_params
     if train_using_lora:
         log_tags.append("lora")
+    if clever_freeze:
+        log_tags.append("clever_freeze")
 
     wandb.init(
         project="audio-captioning",
