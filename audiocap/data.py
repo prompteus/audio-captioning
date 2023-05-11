@@ -92,9 +92,9 @@ class PreprocessAudio:
         return features.reshape(self.num_features, -1)
 
 
-def librosa_load_safe(path: pathlib.Path, sr: int, mono: bool) -> tuple[np.ndarray, int] | tuple[None, int]:
+def librosa_load_safe(path: pathlib.Path, sr: int | None, mono: bool) -> tuple[np.ndarray, int] | tuple[None, int | None]:
     try:
-        return librosa.load(path, sr=sr, mono=mono)
+        return librosa.load(path, sr=sr, mono=mono) # type: ignore
     except Exception as e:
         print(f"Error loading {path}: {e}", file=sys.stderr, flush=True)
         return None, sr
@@ -102,7 +102,6 @@ def librosa_load_safe(path: pathlib.Path, sr: int, mono: bool) -> tuple[np.ndarr
 
 def create_prefix(source_ds: str, task: str) -> str:
     return source_ds + " > " + task + ": "
-
 
 
 
@@ -168,12 +167,24 @@ class AudioFolder:
             pipe
             .sharding_filter()
             .map(set_cols("path", lambda row: self.path / row["file_name"]))
-            .map(set_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
-            .filter(lambda row: row["audio_array"] is not None)
         )
 
-        if self.augmenter is not None:
-            pipe = pipe.map(set_cols("audio_array", lambda row: self.augmenter(row["audio_array"], row["sampling_rate"])))
+        if self.augmenter is None:
+            pipe = (
+                pipe
+                .map(set_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=sr, mono=True)))
+                .filter(lambda row: row["audio_array"] is not None)
+            )
+        else:
+            pipe = (
+                pipe
+                .map(set_cols(("audio_array", "sampling_rate"), lambda row: librosa_load_safe(row["path"], sr=None, mono=True)))
+                .filter(lambda row: row["audio_array"] is not None)
+                .map(set_cols("audio_array", lambda row: self.augmenter(row["audio_array"], row["sampling_rate"])))
+                .map(set_cols("audio_array", lambda row: librosa.resample(row["audio_array"], orig_sr=row["sampling_rate"], target_sr=sr)))
+                .map(set_cols("sampling_rate", lambda _: sr))
+            )
+
 
         pipe = pipe.map(extract_features, ["audio_array", "sampling_rate"], "input_features")
         pipe = pipe.map(del_cols("path"))
