@@ -2,21 +2,21 @@ hf_training_args:
   do_train: True
   do_eval: True
 
-  max_steps: 100_000
+  max_steps: 15_000
   optim: "adamw_torch"
-  learning_rate: 0.00002
+  learning_rate: 0.000004
   warmup_steps: 500
 
-  per_device_train_batch_size: 16
-  gradient_accumulation_steps: 2
-  per_device_eval_batch_size: 16
-  eval_accumulation_steps: 1
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 16
+  per_device_eval_batch_size: 2
+  eval_accumulation_steps: 4
 
-  dataloader_num_workers: 8
+  dataloader_num_workers: 4
   dataloader_pin_memory: True
   dataloader_drop_last: False
 
-  logging_steps: 1
+  logging_steps: 5
   report_to: "wandb"
   remove_unused_columns: False # NEVER TOUCH THIS
 
@@ -38,7 +38,7 @@ hf_training_args:
 
 
 architecture:
-  name: "openai/whisper-tiny"
+  name: "openai/whisper-large-v2"
   use_pretrained_whisper_encoder: True
   use_pretrained_whisper_decoder: True
 
@@ -57,7 +57,7 @@ dataset_mix:
   weights: 
     clotho: 1.0
     audioset: 0.0
-    audiocaps: 0.0
+    audiocaps: 1.0
   limit_val_split:
     clotho: null
     audioset: null

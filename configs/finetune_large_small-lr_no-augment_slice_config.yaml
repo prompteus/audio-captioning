@@ -59,7 +59,7 @@ dataset_mix:
     audioset: 0.0
     audiocaps: 0.0
   limit_val_split:
-    clotho: null
+    clotho: 200
     audioset: null
     audiocaps: null
 
