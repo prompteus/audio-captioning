@@ -21,7 +21,6 @@ hf_training_args:
   remove_unused_columns: False # NEVER TOUCH THIS
 
   fp16: True
-  fp16_full_eval: True
 
   metric_for_best_model: "clotho/spider"
   greater_is_better: True
