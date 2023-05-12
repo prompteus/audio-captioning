@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import shutil
 from typing import Optional, Any
 
 import transformers
@@ -59,8 +60,8 @@ def main(
     datasets_val_limits = dataset_mix_config["limit_val_split"]
 
     train_fc1_only = training_config_dict.get("train_fc1_only", False)
-    train_using_lora = training_config_dict.get("lora_config", None) is not None
-    lora_config_dict = training_config_dict.get("lora_config", {})
+    train_using_peft = training_config_dict.get("peft_config", None) is not None
+    peft_config_dict = training_config_dict.get("peft_config", {})
     clever_freeze = training_config_dict.get("clever_freeze", False)
 
     if train_fc1_only and clever_freeze:
@@ -77,12 +78,9 @@ def main(
     assert isinstance(config, transformers.WhisperConfig)
     model = get_whisper_model(architecture_name, config, load_checkpoint, use_pretrained_encoder, use_pretrained_decoder)
 
-    if train_using_lora:
-        lora_config = peft.LoraConfig(
-            inference_mode=False,
-            **lora_config_dict,
-        )
-        model = peft.get_peft_model(model, lora_config)
+    if train_using_peft:
+        peft_config = peft.get_peft_config(peft_config_dict)
+        model = peft.get_peft_model(model, peft_config)
 
     if train_fc1_only:
         for name, param in model.named_parameters():
@@ -141,8 +139,8 @@ def main(
     if train_fc1_only:
         log_tags.append("fc1_only")
         log_config_dict["trained_params_percent"] = tuned_params / total_params
-    if train_using_lora:
-        log_tags.append("lora")
+    if train_using_peft:
+        log_tags.append("peft")
     if clever_freeze:
         log_tags.append("clever_freeze")
 
@@ -155,6 +153,11 @@ def main(
     )
 
     assert wandb.run is not None
+
+    if train_using_peft and load_checkpoint is not None:
+        # copy orig checkpoint
+        shutil.copytree(load_checkpoint, checkpoint_dir_root / wandb.run.name / f"checkpoint-orig")
+
     training_args_dict_preset: dict[str, Any] = {
         "output_dir": checkpoint_dir_root / wandb.run.name
     }
@@ -185,8 +188,10 @@ def main(
         generate_kwargs={"max_length": training_args_dict["generation_max_length"]},
     )
 
+    callback_peft_checkpoint = audiocap.callbacks.SavePeftModelCallback()
+
     callbacks: list[transformers.TrainerCallback]
-    callbacks = [callback_log_val_preds, callback_log_train_preds]
+    callbacks = [callback_log_val_preds, callback_log_train_preds, callback_peft_checkpoint]
     
     if should_early_stop:
         if early_stopping_patience is None:
@@ -220,8 +225,9 @@ def get_whisper_model(
     use_pretrained_whisper_encoder: bool,
     use_pretrained_whisper_decoder: bool,
 ) -> audiocap.WhisperForAudioCaptioning:
-    
+
     if load_checkpoint is not None:
+        load_checkpoint = pathlib.Path(load_checkpoint).resolve()
         model = audiocap.WhisperForAudioCaptioning.from_pretrained(load_checkpoint)
         assert isinstance(model, audiocap.WhisperForAudioCaptioning)
         return model

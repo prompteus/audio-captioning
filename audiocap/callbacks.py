@@ -1,12 +1,14 @@
 from __future__ import annotations
+
 import math
-import json
 import pathlib
+import shutil
 from typing import Callable
 
 from tqdm.auto import tqdm
 import pandas as pd
 import transformers
+import peft
 import wandb
 import torch
 import torch.utils.data
@@ -151,4 +153,26 @@ class PredictionLogger(transformers.TrainerCallback):
             wandb.log({f"{self.log_prefix}_predictions": table}, step=state.global_step)
         
 
+class SavePeftModelCallback(transformers.TrainerCallback):
+    def on_save(
+        self,
+        args: transformers.TrainingArguments,
+        state: transformers.TrainerState,
+        control: transformers.TrainerControl,
+        **kwargs,
+    ) -> transformers.TrainerControl:
         
+        model = kwargs["model"]
+        if not isinstance(model, peft.PeftModel):
+            return control
+
+        checkpoint_folder = pathlib.Path(args.output_dir) / f"{transformers.trainer_utils.PREFIX_CHECKPOINT_DIR}-{state.global_step}"
+        model.save_pretrained(checkpoint_folder)
+
+        pytorch_model_path = checkpoint_folder / "pytorch_model.bin"
+        if pytorch_model_path.exists():
+            new_path = checkpoint_folder / "full_model"
+            new_path.mkdir()
+            shutil.move(str(pytorch_model_path), new_path)
+
+        return control
