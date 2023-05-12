@@ -6,6 +6,7 @@ import json
 import csv
 import time
 
+import peft
 import torch
 import torch.utils.data
 import typer
@@ -47,12 +48,19 @@ def main(
     use_fp16 = runtime_config.get("use_fp16", False)
     device = runtime_config["device"]
 
-    model = audiocap.models.WhisperForAudioCaptioning.from_pretrained(checkpoint)
+    checkpoint_path = pathlib.Path(checkpoint)
+    if (checkpoint_path / "adapter_config.json").exists():
+        # peft_config = peft.PeftConfig.from_pretrained(checkpoint_path)
+        # TODO - ugly hack, should somehow find the original model weights
+        model = audiocap.WhisperForAudioCaptioning.from_pretrained(checkpoint_path.parent / "checkpoint-orig")
+        model = peft.PeftModel.from_pretrained(model, checkpoint_path)
+    else:
+        model = audiocap.models.WhisperForAudioCaptioning.from_pretrained(checkpoint)
+
     tokenizer = transformers.WhisperTokenizer.from_pretrained(checkpoint, language="en", task="transcribe")
     feature_extractor = transformers.WhisperFeatureExtractor.from_pretrained(architecture_config["name"])
 
     # make mypy happy
-    assert isinstance(model, audiocap.models.WhisperForAudioCaptioning)
     assert isinstance(tokenizer, transformers.WhisperTokenizer)
     assert isinstance(feature_extractor, transformers.WhisperFeatureExtractor)
 
