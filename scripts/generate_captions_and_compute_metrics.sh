@@ -1,7 +1,7 @@
-RUN_NAME=vibrant-haze-32
-CHECKPOINT_NUM=2400
+RUN_NAME=rose-lake-75
+CHECKPOINT_NUM=2000
 CONFIG_YAML=generate_clotho_test
-SPLIT=test # if changed, change the labels path too 
+SPLIT=validation # if changed, change the labels path too 
 OUT_DIR=../inference_outputs
 
 # CUDA_VISIBLE_DEVICES=1 
