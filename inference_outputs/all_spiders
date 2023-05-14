@@ -57,12 +57,12 @@ dainty-yogurt-57_evaluation_predict_clotho_beam_classic12_config:               
 dainty-yogurt-57_valid_predict_audiocaps_beam_classic12_config:                  0.4215
 atomic-sky-43_valid_predict_audiocaps_beam_classic12_config:                     0.4047
 atomic-sky-43_valid_predict_audiocaps_greedy_config:                             0.4342
+atomic-sky-43_valid_predict_audiocaps_greedy_fp32_config:                        0.4364
 faithful-plant-41_valid_predict_audiocaps_greedy_config:                         0.4491
 atomic-sky-43_validation_predict_clotho_beam_classic12_config:                   0.2279
 atomic-sky-43_validation_predict_clotho_beam_classic12_config:                   0.2253
 efficient-jazz-72_validation_predict_clotho_beam_classic12_configbackup_dataset: 0.2584
 efficient-jazz-72_validation_predict_clotho_greedy_config_backup_dataset:        0.2500
-atomic-sky-43_valid_predict_audiocaps_greedy_fp32_config:                        0.4364
 rose-lake-75_validation_predict_clotho_greedy_fp32_config_backup_dataset:        0.2507
 rose-lake-75_validation_predict_clotho_greedy_config_backup_dataset:             0.2507
 magic-mountain-74_validation_predict_clotho_beam_classic3_config_backup_dataset: 0.2561
