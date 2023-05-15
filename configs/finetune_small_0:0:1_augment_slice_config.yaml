@@ -7,16 +7,16 @@ hf_training_args:
   learning_rate: 0.000004
   warmup_steps: 500
 
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 16
-  per_device_eval_batch_size: 1
-  eval_accumulation_steps: 8
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 8
+  per_device_eval_batch_size: 4
+  eval_accumulation_steps: 2
 
   dataloader_num_workers: 4
   dataloader_pin_memory: True
   dataloader_drop_last: False
 
-  logging_steps: 1
+  logging_steps: 5
   report_to: "wandb"
   remove_unused_columns: False # NEVER TOUCH THIS
 
@@ -30,15 +30,15 @@ hf_training_args:
   generation_num_beams: 1
   generation_max_length: 80
   evaluation_strategy: "steps"
-  eval_steps: 200
+  eval_steps: 300
 
   save_strategy: "steps"
-  save_steps: 200
-  save_total_limit: 3
+  save_steps: 300
+  save_total_limit: 5
 
 
 architecture:
-  name: "openai/whisper-large-v2"
+  name: "openai/whisper-small"
   use_pretrained_whisper_encoder: True
   use_pretrained_whisper_decoder: True
 
@@ -63,16 +63,10 @@ dataset_mix:
     audioset: null
     audiocaps: null
 
-peft_config:
-  peft_type: "LORA"
-  r: 64
-  lora_alpha: 32
-  lora_dropout: 0.05
-  bias: "all"
-  target_modules: ["k_proj", "q_proj", "v_proj", "fc1", "fc2", "proj_out"]
-  
 augment:
   p_total: 1.0
   p_noise: 0.3
   p_shift: 0.3
   p_gain: 0.3
+
+train_fc1_only: True

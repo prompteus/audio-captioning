@@ -65,8 +65,8 @@ dataset_mix:
 
 peft_config:
   peft_type: "LORA"
-  r: 64
-  lora_alpha: 32
+  r: 256
+  lora_alpha: 128
   lora_dropout: 0.05
   bias: "all"
   target_modules: ["k_proj", "q_proj", "v_proj", "fc1", "fc2", "proj_out"]
