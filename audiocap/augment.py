@@ -22,7 +22,7 @@ class Augmenter:
             audiomentations.AddGaussianSNR(min_snr_in_db=40.0, max_snr_in_db=100.0, p=config.p_noise),
             audiomentations.Shift(min_fraction=-0.1, max_fraction=0.1, rollover=True, p=config.p_shift),
             audiomentations.Compose([
-                audiomentations.Gain(min_gain_in_db=10, max_gain_in_db=10, p=1),
+                audiomentations.Gain(min_gain_in_db=-10, max_gain_in_db=10, p=1),
                 audiomentations.Clip(a_min=-1.0, a_max=1.0, p=1)
             ], p=config.p_gain),
         ]
