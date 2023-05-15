@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/rose-lake-75/checkpoint-2000",
+  "data": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation",
+  "output_file": "../inference_outputs/rose-lake-75_evaluation_predict_clotho_beam_classic10_config_backup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_clotho_beam_classic10_config.yaml",
+  "take_first_n": null,
+  "num_files": 1045,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": false,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 10,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "clotho",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "2",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/rose-lake-75/checkpoint-2000 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation --output-file ../inference_outputs/rose-lake-75_evaluation_predict_clotho_beam_classic10_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic10_config.yaml",
+  "wall_time": 1004.7985224723816,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/rose-lake-75_evaluation_predict_clotho_beam_classic10_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/clotho_captions_evaluation.csv",
+    "computed metrics": {
+      "sacrebleu": 16.48898638074908,
+      "meteor": 0.37066007142324175,
+      "spice": 0.12447910887197822,
+      "cider": 0.42918989353766834,
+      "spider": 0.2768345012048233
+    }
+  }
+}

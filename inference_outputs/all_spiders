@@ -72,3 +72,9 @@ magic-mountain-74_validation_predict_clotho_beam_classic10_config_backup_dataset
 magic-mountain-74_validation_predict_clotho_beam_classic12_config_backup_dataset:0.2545
 ethereal-sponge-78_backup_valid_predict_audiocaps_greedy_config_backup_dataset:  0.5385
 ethereal-sponge-78_backup_test_predict_audiocaps_greedy_config_backup_dataset:   0.4168
+rose-lake-75_validation_predict_clotho_beam_classic5_config_backup_dataset:      0.2640
+ethereal-sponge-78_validation_predict_clotho_beam_classic5_config_backup_dataset:0.2600
+rose-lake-75_validation_predict_clotho_beam_classic10_config_backup_dataset:     0.2592
+ethereal-sponge-78_validation_predict_clotho_beam_classic10_config_backup_dataset:0.2572
+rose-lake-75_evaluation_predict_clotho_beam_classic5_config_backup_dataset:      0.2778
+rose-lake-75_evaluation_predict_clotho_beam_classic10_config_backup_dataset:     0.2768

@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78/checkpoint-1200",
+  "data": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/validation",
+  "output_file": "../inference_outputs/ethereal-sponge-78_validation_predict_clotho_beam_classic10_config_backup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_clotho_beam_classic10_config.yaml",
+  "take_first_n": null,
+  "num_files": 1045,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": false,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 10,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "clotho",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "1",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/ethereal-sponge-78/checkpoint-1200 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/validation --output-file ../inference_outputs/ethereal-sponge-78_validation_predict_clotho_beam_classic10_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic10_config.yaml",
+  "wall_time": 1016.1138248443604,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/ethereal-sponge-78_validation_predict_clotho_beam_classic10_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/clotho_captions_validation.csv",
+    "computed metrics": {
+      "sacrebleu": 14.420553929151275,
+      "meteor": 0.36002079956978955,
+      "spice": 0.12154249879037343,
+      "cider": 0.39292534314649336,
+      "spider": 0.2572339209684334
+    }
+  }
+}
