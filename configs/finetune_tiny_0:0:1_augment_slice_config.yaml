@@ -9,8 +9,8 @@ hf_training_args:
 
   per_device_train_batch_size: 16
   gradient_accumulation_steps: 2
-  per_device_eval_batch_size: 8
-  eval_accumulation_steps: 1
+  per_device_eval_batch_size: 4
+  eval_accumulation_steps: 2
 
   dataloader_num_workers: 6
   dataloader_pin_memory: True
@@ -57,7 +57,7 @@ dataset_mix:
   weights: 
     clotho: 1.0
     audioset: 0.0
-    audiocaps: 1.0
+    audiocaps: 0.0
   limit_val_split:
     clotho: null
     audioset: null
@@ -68,3 +68,5 @@ augment:
   p_noise: 0.3
   p_shift: 0.3
   p_gain: 0.3
+
+train_fc1_only: True
