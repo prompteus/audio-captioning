@@ -78,3 +78,17 @@ rose-lake-75_validation_predict_clotho_beam_classic10_config_backup_dataset:    
 ethereal-sponge-78_validation_predict_clotho_beam_classic10_config_backup_dataset:0.2572
 rose-lake-75_evaluation_predict_clotho_beam_classic5_config_backup_dataset:      0.2778
 rose-lake-75_evaluation_predict_clotho_beam_classic10_config_backup_dataset:     0.2768
+peach-bush-111_evaluation_predict_clotho_beam_classic5_config_backup_dataset:    0.2963
+peach-bush-111_validation_predict_clotho_beam_classic5_config_backup_dataset:    0.3109
+
+
+trim-snow-114_evaluation_predict_clotho_beam_classic5_config_backup_dataset:     0.2794
+stilted-vortex-116_evaluation_predict_clotho_beam_classic5_config_backup_dataset:0.2687
+fancy-galaxy-115_validation_predict_clotho_beam_classic5_config_backup_dataset:  0.2189
+fancy-galaxy-115_evaluation_predict_clotho_beam_classic5_config_backup_dataset:  0.2240
+fancy-galaxy-115_validation_predict_clotho_beam_classic5_config_backup_dataset:  0.2180
+stilted-vortex-116_validation_predict_clotho_beam_classic5_config_backup_dataset:0.2465
+fancy-galaxy-115_validation_predict_clotho_beam_classic10_config_backup_dataset: 0.2146
+stilted-vortex-116_validation_predict_clotho_beam_classic10_config_backup_dataset:0.2429
+trim-snow-114_validation_predict_clotho_beam_classic5_config_backup_dataset:     0.2629
+trim-snow-114_validation_predict_clotho_beam_classic10_config_backup_dataset:    0.2606

@@ -1,0 +1,46 @@
+{
+  "checkpoint": "../../maratmp/audio-captioning/checkpoints/stilted-vortex-116/checkpoint-1500",
+  "data": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation",
+  "output_file": "../inference_outputs/stilted-vortex-116_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv",
+  "recursive": false,
+  "config_file": "../configs/hyperparameters_search/predict_clotho_beam_classic5_config.yaml",
+  "take_first_n": null,
+  "num_files": 1045,
+  "config": {
+    "architecture": {
+      "name": "openai/whisper-large-v2"
+    },
+    "runtime": {
+      "use_fp16": false,
+      "device": "cuda"
+    },
+    "dataloader": {
+      "batch_size": 2,
+      "num_workers": 4,
+      "pin_memory": true
+    },
+    "generate": {
+      "num_beams": 5,
+      "do_sample": false,
+      "max_length": 80
+    },
+    "dataset": {
+      "source_ds": "clotho",
+      "task": "caption"
+    }
+  },
+  "cuda_visible_devices": "1",
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/stilted-vortex-116/checkpoint-1500 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation --output-file ../inference_outputs/stilted-vortex-116_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic5_config.yaml",
+  "wall_time": 245.50095772743225,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/stilted-vortex-116_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/clotho_captions_evaluation.csv",
+    "computed metrics": {
+      "sacrebleu": 15.758634682401231,
+      "meteor": 0.37818115644700606,
+      "spice": 0.12325985411619006,
+      "cider": 0.4142280806776079,
+      "spider": 0.268743967396899
+    }
+  }
+}

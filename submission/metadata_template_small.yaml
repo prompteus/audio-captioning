@@ -5,36 +5,70 @@ submission:
   # Generate your label following way to avoid
   # overlapping codes among submissions
   # [Last name of corresponding author]_[Abbreviation of institute of the corresponding author]_task[task number]_[index number of your submission (1-4)]
-  label: gontier_inr_task6a_1
+  label: kadlcik_jku_task6a_2
   #
   # Submission name
   # This name will be used in the results tables when space permits
-  name: DCASE2023 baseline system
+  name: Careless Whisper Small
   #
   # Submission name abbreviated
   # This abbreviated name will be used in the results table when space is tight.
   # Use maximum 10 characters.
-abbreviation: Baseline
+abbreviation: CarelessWhisperSmall
 
   # Authors of the submitted system. Mark authors in
   # the order you want them to appear in submission lists.
   # One of the authors has to be marked as corresponding author,
   # this will be listed next to the submission in the results tables.
-  authors:
-    # First author
-    - lastname: Gontier
-      firstname: Felix
-      email: felix.gontier@inria.fr               # Contact email address
-      corresponding: true                         # Mark true for one of the authors
+authors:
+  # First author
+  - lastname: Kadlčík
+    firstname: Marek
+    email: kadlcik@mail.muni.cz               # Contact email address
+    corresponding: true                         # Mark true for one of the authors
 
-      # Affiliation information for the author
-      affiliation:
-        abbreviation: INRIA
-        institute: INRIA
-        department: Multispeech            # Optional
-        location: Nancy, France
+    # Affiliation information for the author
+    affiliation:
+      abbreviation: JKU
+      institute: Institute of Computational Perception
+      location: Linz, Austria
 
-    # Second author...
+  # Second author
+  - lastname: Hájek
+    firstname: Adam
+    email: ahajek@mail.muni.cz               # Contact email address
+    corresponding: true                         # Mark true for one of the authors
+
+    # Affiliation information for the author
+    affiliation:
+      abbreviation: JKU
+      institute: Institute of Computational Perception
+      location: Linz, Austria
+  
+  # Third author
+  - lastname: Kieslich
+    firstname: Jürgen
+    email: j.kieslich@gmx.at               # Contact email address
+    corresponding: false                         
+
+    # Affiliation information for the author
+    affiliation:
+      abbreviation: JKU
+      institute: Institute of Computational Perception
+      location: Linz, Austria
+
+  # Fourth author
+  - lastname: Winiecki
+    firstname: Radosɫaw
+    email: radoslaw.winiecki@student.put.poznan.pl
+    corresponding: false                         
+
+    # Affiliation information for the author
+    affiliation:
+      abbreviation: JKU
+      institute: Institute of Computational Perception
+      location: Linz, Austria
+
 
 # System information
 system:
@@ -59,7 +93,7 @@ system:
     # you can indicate the name of the system, for example
     #
     # `acoustic_features: audioset`
-    acoustic_features: VGGish
+    acoustic_features: WhisperFeatureExtractor
 
     # Word embeddings
     # Here you can indicate how you treated word embeddings.
@@ -71,11 +105,11 @@ system:
     #  
     # Else, specify the pre-trained word embeddings that you used
     # (e.g. Word2Vec, BERT, etc).
-    word_embeddings: BART
+    word_embeddings: Whisper
 
     # Data augmentation methods
     # e.g. mixup, time stretching, block mixing, pitch shifting, ...
-    data_augmentation: !!null
+    data_augmentation: ["gaussian noise", "time shifting", "gain adjusting"]
 
     # Method scheme
     # Here you should indicate the scheme of the method that you
@@ -129,19 +163,19 @@ system:
     # Learning rate
     # Here you should indicate the learning rate of the optimizer
     # that you used.
-    learning_rate: 1e-5
+    learning_rate: 4e-6
 
     # Gradient clipping
     # Here you should indicate if you used any gradient clipping. 
     # You do this by indicating the value used for clipping. Use
     # 0 for no clipping.
-    gradient_clipping: 0
+    gradient_clipping: 1.0
 
     # Gradient norm
     # Here you should indicate the norm of the gradient that you
     # used for gradient clipping. This field is used only when 
     # gradient clipping has been employed.
-    gradient_norm: !!null
+    gradient_norm: 1.0
 
     # Metric monitored
     # Here you should report the monitored metric
@@ -149,7 +183,7 @@ system:
     # monitored the loss on the validation data (i.e. validation
     # loss)? Or you monitored the SPIDEr metric? Maybe the training
     # loss?
-    metric_monitored: validation_loss
+    metric_monitored: SPIDEr
 
   # System complexity, meta data provided here will be used to evaluate
   # submitted systems from the computational load perspective.
@@ -163,7 +197,7 @@ system:
     # In case embeddings are used, add up parameter count of the embedding
     # extraction networks and classification network
     # Use numerical value (do not use comma for thousands-separator).
-    total_parameters: 140000000
+    total_parameters: 244000000
 
   # List of external datasets used in the submission.
   # Development dataset is used here only as example, list only external datasets
@@ -195,6 +229,63 @@ system:
       # Used for (e.g. audio_modelling, word_modelling, audio_and_word_modelling)
       used_for: audio_and_word_modelling
 
+
+    # Dataset name
+    - name: AudioCaps
+
+      # Dataset access url
+      url: https://doi.org/10.18653/v1/N19-1011
+
+      # Has audio:
+      has_audio: Yes
+
+      # Has images
+      has_images: No
+
+      # Has video
+      has_video: No
+
+      # Has captions
+      has_captions: Yes
+
+      # Number of captions per audio
+      nb_captions_per_audio: 1
+
+      # Total amount of examples used
+      total_audio_length: 46700
+
+      # Used for (e.g. audio_modelling, word_modelling, audio_and_word_modelling)
+      used_for: audio_and_word_modelling
+
+
+    # Dataset name
+    - name: AudioSet
+
+      # Dataset access url
+      url: https://doi.org/10.1109/ICASSP.2017.7952261
+
+      # Has audio:
+      has_audio: Yes
+
+      # Has images
+      has_images: No
+
+      # Has video
+      has_video: No
+
+      # Has captions
+      has_captions: No
+
+      # Number of captions per audio
+      nb_captions_per_audio: 0
+
+      # Total amount of examples used
+      total_audio_length: 134002
+
+      # Used for (e.g. audio_modelling, word_modelling, audio_and_word_modelling)
+      used_for: audio_and_word_modelling
+
+
   # URL to the source code of the system [optional]
   source_code: https://github.com/audio-captioning/dcase-2023-baseline
 
@@ -206,8 +297,8 @@ results:
     # as they are needed for through analysis of the challenge submissions.
     # If you are unable to provide all results, also incomplete
     # results can be reported.
-    meteor: 
-    cider: 
-    spice: 
-    spider: 
-    spiderfl: 
+    meteor: 0.3781
+    cider: 0.4142
+    spice: 0.1234
+    spider: 0.2687
+    spiderfl: !!null

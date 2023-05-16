@@ -30,5 +30,17 @@
     }
   },
   "cuda_visible_devices": "1",
-  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/trim-snow-114/checkpoint-2200 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation --output-file ../inference_outputs/trim-snow-114_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic5_config.yaml"
+  "command": "predict.py --checkpoint ../../maratmp/audio-captioning/checkpoints/trim-snow-114/checkpoint-2200 --data ../../maratmp/audio-captioning/data/clotho_v2.1_backup/audiofolder/evaluation --output-file ../inference_outputs/trim-snow-114_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv --config-file ../configs/hyperparameters_search/predict_clotho_beam_classic5_config.yaml",
+  "wall_time": 680.4470512866974,
+  "metric_computation": {
+    "predictions file": "../inference_outputs/trim-snow-114_evaluation_predict_clotho_beam_classic5_config_backup_dataset.csv",
+    "ground truth file": "../../maratmp/audio-captioning/data/clotho_v2.1_backup/clotho_captions_evaluation.csv",
+    "computed metrics": {
+      "sacrebleu": 16.497519875210514,
+      "meteor": 0.3782361809334103,
+      "spice": 0.12572267057807227,
+      "cider": 0.43317588755703607,
+      "spider": 0.2794492790675542
+    }
+  }
 }

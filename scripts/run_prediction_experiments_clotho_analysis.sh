@@ -7,8 +7,8 @@ do
 
     echo "Running inference with config file: ${CONFIG_FILE_NAME}.yaml"
     DATASET=clotho_v2.1_backup # clotho_v2.1
-    RUN_NAME=trim-snow-114 # rose-lake-75 # atomic-sky-43 # magic-mountain-74 # efficient-jazz-72 # dainty-yogurt-57 # mythical-trooper-62 (lora?)
-    CHECKPOINT=2200 # 2000 # 1000 # 13500 # 6200  # 1000 # 2600
+    RUN_NAME=stilted-vortex-116 # stilted-vortex-116 # trim-snow-114 # rose-lake-75 # atomic-sky-43 # magic-mountain-74 # efficient-jazz-72 # dainty-yogurt-57 # mythical-trooper-62 (lora?)
+    CHECKPOINT=1500 # 1500 # 2200 # 2000 # 1000 # 13500 # 6200  # 1000 # 2600
     SPLIT=clotho_analysis
     OUT_FILE_NAME=${RUN_NAME}_${SPLIT}_${CONFIG_FILE_NAME}${ADDITIONAL_INFO}
 
