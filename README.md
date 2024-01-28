@@ -1,5 +1,27 @@
 # Audio captioning
 
+This is the official repository for a technical report [A Whisper transformer for audio captioning trained with synthetic captions and transfer learning](https://arxiv.org/abs/2305.09690).
+
+This repository serves to train and evaluate the Whisper model for general audio-scene captioning. 
+The input is a short audio clip, and the output is a brief text description of what is happening.
+
+You can find our checkpoints [on Huggingface](https://huggingface.co/collections/MU-NLPC/whisper-for-audio-captioning-653fc8f8fd9b567733359593):
+- [Whisper tiny](https://huggingface.co/MU-NLPC/whisper-tiny-audio-captioning)
+- [Whisper small](https://huggingface.co/MU-NLPC/whisper-small-audio-captioning)
+- [Whisper large](https://huggingface.co/MU-NLPC/whisper-large-v2-audio-captioning)
+
+
+If you find our work useful, cite us as follows:
+```
+@misc{kadlčík2023whisper,
+      title={A Whisper transformer for audio captioning trained with synthetic captions and transfer learning}, 
+      author={Marek Kadlčík and Adam Hájek and Jürgen Kieslich and Radosław Winiecki},
+      year={2023},
+      eprint={2305.09690},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD}
+}
+```
 
 ## Setting up environment
 
