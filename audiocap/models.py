@@ -1,6 +1,7 @@
+from typing import Optional, Tuple, Union
+
 import transformers
 import torch
-from typing import Optional, Tuple, Union
 from transformers.modeling_outputs import Seq2SeqLMOutput
 from transformers.generation.logits_process import WhisperTimeStampLogitsProcessor
 from transformers.models.whisper.tokenization_whisper import TASK_IDS, TO_LANGUAGE_CODE
@@ -10,40 +11,10 @@ class WhisperForAudioCaptioning(transformers.WhisperForConditionalGeneration):
 
     def forward(
         self,
-        input_features: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.LongTensor] = None,
-        decoder_input_ids: Optional[torch.LongTensor] = None,
-        decoder_attention_mask: Optional[torch.LongTensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
-        decoder_head_mask: Optional[torch.Tensor] = None,
-        cross_attn_head_mask: Optional[torch.Tensor] = None,
-        encoder_outputs: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
-        past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
-        decoder_inputs_embeds: Optional[Tuple[torch.FloatTensor]] = None,
-        labels: Optional[torch.LongTensor] = None,
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
         forced_ac_decoder_ids: Optional[torch.LongTensor] = None, # added to be ignored when passed from trainer
+        **kwargs,
     ) -> Union[Tuple[torch.Tensor], Seq2SeqLMOutput]:
-        return super().forward(
-            input_features=input_features,
-            attention_mask=attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=decoder_attention_mask,
-            head_mask=head_mask,
-            decoder_head_mask=decoder_head_mask,
-            cross_attn_head_mask=cross_attn_head_mask,
-            encoder_outputs=encoder_outputs,
-            past_key_values=past_key_values,
-            decoder_inputs_embeds=decoder_inputs_embeds,
-            labels=labels,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
+        return super().forward(**kwargs)
     
     # copy-pasted and adapted from transformers.WhisperForConditionalGeneration.generate
     def generate(
@@ -144,9 +115,14 @@ class WhisperForAudioCaptioning(transformers.WhisperForConditionalGeneration):
             decoder_input_ids = decoder_input_ids.expand((batch_size, fluff_len))
             decoder_input_ids = torch.cat([decoder_input_ids, forced_ac_decoder_ids], dim=1)
 
-            generation_config.forced_decoder_ids = forced_decoder_ids
+        # This attribute is no longer supported by transformers whisper generate
+        if hasattr(generation_config, "forced_decoder_ids"):
+            generation_config.forced_decoder_ids = None
+        # but it's not needed because we force the decoder input ids directly via
+        # `decoder_input_ids` parameter below
 
-        return super(transformers.WhisperPreTrainedModel, self).generate(   # changed by adam (calling grandparent)
+        return transformers.WhisperPreTrainedModel.generate(
+            self,
             inputs,
             generation_config,
             logits_processor,
